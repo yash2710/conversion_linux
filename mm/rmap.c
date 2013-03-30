@@ -168,6 +168,8 @@ int anon_vma_prepare(struct vm_area_struct *vma)
 	return -ENOMEM;
 }
 
+EXPORT_SYMBOL(anon_vma_prepare);
+
 static void anon_vma_chain_link(struct vm_area_struct *vma,
 				struct anon_vma_chain *avc,
 				struct anon_vma *anon_vma)
@@ -479,6 +481,8 @@ int page_mapped_in_vma(struct page *page, struct vm_area_struct *vma)
 
 	return 1;
 }
+
+EXPORT_SYMBOL(page_mapped_in_vma);
 
 /*
  * Subfunctions of page_referenced: page_referenced_one called
@@ -854,7 +858,7 @@ void page_add_anon_rmap(struct page *page,
 {
 	do_page_add_anon_rmap(page, vma, address, 0);
 }
-
+EXPORT_SYMBOL(page_add_anon_rmap);
 /*
  * Special version of the above for do_swap_page, which often runs
  * into pages that are exclusively owned by the current process.
@@ -895,10 +899,12 @@ void page_add_new_anon_rmap(struct page *page,
 	atomic_set(&page->_mapcount, 0); /* increment count (starts at -1) */
 	__inc_zone_page_state(page, NR_ANON_PAGES);
 	__page_set_anon_rmap(page, vma, address, 1);
-	if (page_evictable(page, vma))
+	if (page_evictable(page, vma)){
 		lru_cache_add_lru(page, LRU_ACTIVE_ANON);
-	else
+	}
+	else{
 		add_page_to_unevictable_list(page);
+	}
 }
 
 /**
@@ -914,7 +920,7 @@ void page_add_file_rmap(struct page *page)
 		mem_cgroup_update_file_mapped(page, 1);
 	}
 }
-
+EXPORT_SYMBOL(page_add_file_rmap);
 /**
  * page_remove_rmap - take down pte mapping from a page
  * @page: page to remove mapping from
@@ -961,7 +967,7 @@ void page_remove_rmap(struct page *page)
 	 * faster for those pages still in swapcache.
 	 */
 }
-
+EXPORT_SYMBOL(page_remove_rmap);
 /*
  * Subfunctions of try_to_unmap: try_to_unmap_one called
  * repeatedly from either try_to_unmap_anon or try_to_unmap_file.

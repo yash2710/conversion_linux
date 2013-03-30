@@ -87,6 +87,8 @@ int sysctl_overcommit_memory = OVERCOMMIT_GUESS;  /* heuristic overcommit */
 int sysctl_overcommit_ratio = 50;	/* default is 50% */
 int sysctl_max_map_count __read_mostly = DEFAULT_MAX_MAP_COUNT;
 struct percpu_counter vm_committed_as;
+struct mmap_snapshot mmap_snapshot_instance;
+EXPORT_SYMBOL(mmap_snapshot_instance);
 
 /*
  * Check that a process has enough memory to allocate a new virtual
@@ -418,11 +420,11 @@ void __vma_link_rb(struct mm_struct *mm, struct vm_area_struct *vma,
 static void __vma_link_file(struct vm_area_struct *vma)
 {
 	struct file *file;
-
+	//trace_printk("in __vma_link_file\n");
 	file = vma->vm_file;
 	if (file) {
 		struct address_space *mapping = file->f_mapping;
-
+		//trace_printk("in __vma_link_file 2\n");
 		if (vma->vm_flags & VM_DENYWRITE)
 			atomic_dec(&file->f_path.dentry->d_inode->i_writecount);
 		if (vma->vm_flags & VM_SHARED)
@@ -431,10 +433,13 @@ static void __vma_link_file(struct vm_area_struct *vma)
 		flush_dcache_mmap_lock(mapping);
 		if (unlikely(vma->vm_flags & VM_NONLINEAR))
 			vma_nonlinear_insert(vma, &mapping->i_mmap_nonlinear);
-		else
+		else{
 			vma_prio_tree_insert(vma, &mapping->i_mmap);
+			//trace_printk("inserted %p into %p\n", vma, &mapping->i_mmap);
+		}
 		flush_dcache_mmap_unlock(mapping);
 	}
+	//trace_printk("in __vma_link_file DONE\n");
 }
 
 static void
@@ -1235,11 +1240,9 @@ munmap_back:
 			return -ENOMEM;
 		goto munmap_back;
 	}
-
 	/* Check against address space limit. */
 	if (!may_expand_vm(mm, len >> PAGE_SHIFT))
 		return -ENOMEM;
-
 	/*
 	 * Set 'VM_NORESERVE' if we should not account for the
 	 * memory use of this mapping.
@@ -1267,6 +1270,7 @@ munmap_back:
 	/*
 	 * Can we just expand an old mapping?
 	 */
+
 	vma = vma_merge(mm, prev, addr, addr + len, vm_flags, NULL, file, pgoff, NULL);
 	if (vma)
 		goto out;
@@ -1300,6 +1304,7 @@ munmap_back:
 				goto free_vma;
 			correct_wcount = 1;
 		}
+
 		vma->vm_file = file;
 		get_file(file);
 		error = file->f_op->mmap(file, vma);
@@ -1336,16 +1341,13 @@ munmap_back:
 		if (pgprot_val(pprot) == pgprot_val(pgprot_noncached(pprot)))
 			vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
 	}
-
 	vma_link(mm, vma, prev, rb_link, rb_parent);
 	file = vma->vm_file;
-
 	/* Once vma denies write, undo our temporary denial count */
 	if (correct_wcount)
 		atomic_inc(&inode->i_writecount);
 out:
 	perf_event_mmap(vma);
-
 	mm->total_vm += len >> PAGE_SHIFT;
 	vm_stat_account(mm, vm_flags, file, len >> PAGE_SHIFT);
 	if (vm_flags & VM_LOCKED) {
@@ -1353,6 +1355,7 @@ out:
 			mm->locked_vm += (len >> PAGE_SHIFT);
 	} else if ((flags & MAP_POPULATE) && !(flags & MAP_NONBLOCK))
 		make_pages_present(addr, addr + len);
+	
 	return addr;
 
 unmap_and_free_vma:
@@ -1401,6 +1404,7 @@ arch_get_unmapped_area(struct file *filp, unsigned long addr,
 	if (addr) {
 		addr = PAGE_ALIGN(addr);
 		vma = find_vma(mm, addr);
+		
 		if (TASK_SIZE - len >= addr &&
 		    (!vma || addr + len <= vma->vm_start))
 			return addr;
@@ -1478,6 +1482,8 @@ arch_get_unmapped_area_topdown(struct file *filp, const unsigned long addr0,
 	if (addr) {
 		addr = PAGE_ALIGN(addr);
 		vma = find_vma(mm, addr);
+		
+		
 		if (TASK_SIZE - len >= addr &&
 				(!vma || addr + len <= vma->vm_start))
 			return addr;
@@ -2110,6 +2116,9 @@ int do_munmap(struct mm_struct *mm, unsigned long start, size_t len)
 	/*
 	 * Remove the vma's, and unmap the actual pages
 	 */
+	if (tim_debug_instance.tim_unmap_debug){
+		tim_debug_instance.tim_unmap_debug(vma, mm);		
+	}
 	detach_vmas_to_be_unmapped(mm, vma, prev, end);
 	unmap_region(mm, vma, prev, start, end);
 
@@ -2254,10 +2263,8 @@ void exit_mmap(struct mm_struct *mm)
 	struct vm_area_struct *vma;
 	unsigned long nr_accounted = 0;
 	unsigned long end;
-
 	/* mm's last user has gone, and its about to be pulled down */
 	mmu_notifier_release(mm);
-
 	if (mm->locked_vm) {
 		vma = mm->mmap;
 		while (vma) {
@@ -2266,13 +2273,10 @@ void exit_mmap(struct mm_struct *mm)
 			vma = vma->vm_next;
 		}
 	}
-
 	arch_exit_mmap(mm);
-
 	vma = mm->mmap;
 	if (!vma)	/* Can happen if dup_mmap() received an OOM */
 		return;
-
 	lru_add_drain();
 	flush_cache_mm(mm);
 	tlb = tlb_gather_mmu(mm, 1);
@@ -2280,17 +2284,14 @@ void exit_mmap(struct mm_struct *mm)
 	/* Use -1 here to ensure all VMAs in the mm are unmapped */
 	end = unmap_vmas(&tlb, vma, 0, -1, &nr_accounted, NULL);
 	vm_unacct_memory(nr_accounted);
-
 	free_pgtables(tlb, vma, FIRST_USER_ADDRESS, 0);
 	tlb_finish_mmu(tlb, 0, end);
-
 	/*
 	 * Walk the list again, actually closing and freeing it,
 	 * with preemption enabled, without holding any MM locks.
 	 */
 	while (vma)
 		vma = remove_vma(vma);
-
 	BUG_ON(mm->nr_ptes > (FIRST_USER_ADDRESS+PMD_SIZE-1)>>PMD_SHIFT);
 }
 

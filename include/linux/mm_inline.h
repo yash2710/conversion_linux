@@ -22,9 +22,9 @@ static inline int page_is_file_cache(struct page *page)
 static inline void
 add_page_to_lru_list(struct zone *zone, struct page *page, enum lru_list l)
 {
-	list_add(&page->lru, &zone->lru[l].list);
-	__inc_zone_state(zone, NR_LRU_BASE + l);
-	mem_cgroup_add_lru_list(page, l);
+    list_add(&page->lru, &zone->lru[l].list);
+  __inc_zone_state(zone, NR_LRU_BASE + l);
+  mem_cgroup_add_lru_list(page, l);
 }
 
 static inline void

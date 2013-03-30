@@ -28,6 +28,10 @@
 #define MS_ASYNC	1		/* sync memory asynchronously */
 #define MS_INVALIDATE	2		/* invalidate the caches */
 #define MS_SYNC		4		/* synchronous memory sync */
+#define MS_KSNAP_GET    8
+#define MS_KSNAP_MAKE   16
+#define MS_KSNAP_GET_MERGE 32
+#define MS_KSNAP_DETERM_LAZY 64
 
 #define MADV_NORMAL	0		/* no further special treatment */
 #define MADV_RANDOM	1		/* expect random page references */
@@ -44,6 +48,12 @@
 
 #define MADV_MERGEABLE   12		/* KSM may merge identical pages */
 #define MADV_UNMERGEABLE 13		/* KSM may not merge identical pages */
+
+#define MADV_KSNAP_ALWAYS 200
+#define MADV_KSNAP_ADAPT 201
+#define MADV_KSNAP_PERIODIC 202
+#define MADV_KSNAP_TRACK 210
+
 
 /* compatibility flags */
 #define MAP_FILE	0

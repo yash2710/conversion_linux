@@ -47,14 +47,14 @@ static DEFINE_PER_CPU(struct pagevec, lru_rotate_pvecs);
 static void __page_cache_release(struct page *page)
 {
 	if (PageLRU(page)) {
-		unsigned long flags;
-		struct zone *zone = page_zone(page);
-
-		spin_lock_irqsave(&zone->lru_lock, flags);
-		VM_BUG_ON(!PageLRU(page));
-		__ClearPageLRU(page);
-		del_page_from_lru(zone, page);
-		spin_unlock_irqrestore(&zone->lru_lock, flags);
+	  unsigned long flags;
+	  struct zone *zone = page_zone(page);
+	  
+	  spin_lock_irqsave(&zone->lru_lock, flags);
+	  VM_BUG_ON(!PageLRU(page));
+	  __ClearPageLRU(page);
+	  del_page_from_lru(zone, page);
+	  spin_unlock_irqrestore(&zone->lru_lock, flags);
 	}
 	free_hot_cold_page(page, 0);
 }
@@ -219,6 +219,11 @@ void __lru_cache_add(struct page *page, enum lru_list lru)
 {
 	struct pagevec *pvec = &get_cpu_var(lru_add_pvecs)[lru];
 
+	/*debugging, trying to figure out when the lru add is happening*/
+	if (tim_debug_instance.ptr_of_interest2 == NULL){
+	  tim_debug_instance.ptr_of_interest2 = 555;
+	}
+
 	page_cache_get(page);
 	if (!pagevec_add(pvec, page))
 		____pagevec_lru_add(pvec, lru);
@@ -240,6 +245,9 @@ void lru_cache_add_lru(struct page *page, enum lru_list lru)
 		VM_BUG_ON(PageActive(page));
 		ClearPageUnevictable(page);
 	}
+
+	/*debugging, trying to figure out when the lru add is happening*/
+
 
 	VM_BUG_ON(PageLRU(page) || PageActive(page) || PageUnevictable(page));
 	__lru_cache_add(page, lru);
@@ -299,6 +307,7 @@ void lru_add_drain(void)
 	drain_cpu_pagevecs(get_cpu());
 	put_cpu();
 }
+EXPORT_SYMBOL(lru_add_drain);
 
 static void lru_add_drain_per_cpu(struct work_struct *dummy)
 {
@@ -336,6 +345,15 @@ void release_pages(struct page **pages, int nr, int cold)
 	pagevec_init(&pages_to_free, cold);
 	for (i = 0; i < nr; i++) {
 		struct page *page = pages[i];
+		//
+		//printk(KERN_INFO " releasing page %p\n", page);
+		//dump_page(page);
+
+		//some temporary snapshot stats
+		if(page->snap_page_debug[0]==mmap_snapshot_instance.snap_sequence_number && mmap_snapshot_instance.stats_dec_pages_allocated){
+		  trace_printk("removing %p %lu from the lru %d\n", page, page->index, page_count(page));
+		}
+
 
 		if (unlikely(PageCompound(page))) {
 			if (zone) {
@@ -345,6 +363,9 @@ void release_pages(struct page **pages, int nr, int cold)
 			put_compound_page(page);
 			continue;
 		}
+		
+		/*debugging, trying to figure out when the lru add is happening*/
+
 
 		if (!put_page_testzero(page))
 			continue;
@@ -412,6 +433,7 @@ void ____pagevec_lru_add(struct pagevec *pvec, enum lru_list lru)
 
 	for (i = 0; i < pagevec_count(pvec); i++) {
 		struct page *page = pvec->pages[i];
+
 		struct zone *pagezone = page_zone(page);
 		int file;
 		int active;

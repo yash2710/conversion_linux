@@ -17,7 +17,7 @@
  * would have taken more than the 6M I have free, but it worked well as
  * far as I could see.
  *
- * Also corrected some "invalidate()"s - I wasn't doing enough of them.
+ * Also corrected some "invalidate()"s - I wasn't doing enough of them. 666-666
  */
 
 /*
@@ -427,6 +427,9 @@ int __pte_alloc(struct mm_struct *mm, pmd_t *pmd, unsigned long address)
 	return 0;
 }
 
+EXPORT_SYMBOL(__pte_alloc);
+
+
 int __pte_alloc_kernel(pmd_t *pmd, unsigned long address)
 {
 	pte_t *new = pte_alloc_one_kernel(&init_mm, address);
@@ -480,7 +483,7 @@ static void print_bad_pte(struct vm_area_struct *vma, unsigned long addr,
 	static unsigned long resume;
 	static unsigned long nr_shown;
 	static unsigned long nr_unshown;
-
+	int i;
 	/*
 	 * Allow a burst of 60 reports, then keep quiet for that minute;
 	 * or allow a steady drip of one report per second.
@@ -504,12 +507,18 @@ static void print_bad_pte(struct vm_area_struct *vma, unsigned long addr,
 	mapping = vma->vm_file ? vma->vm_file->f_mapping : NULL;
 	index = linear_page_index(vma, addr);
 
+	if (page){
+	  for (i=0;i<20;++i){
+	    printk(KERN_ALERT "DEBUG %d: %lu\n", i, page->snap_page_debug[i]);
+	  }
+	}
+
 	printk(KERN_ALERT
 		"BUG: Bad page map in process %s  pte:%08llx pmd:%08llx\n",
 		current->comm,
 		(long long)pte_val(pte), (long long)pmd_val(*pmd));
 	if (page)
-		dump_page(page);
+	  dump_page(page);
 	printk(KERN_ALERT
 		"addr:%p vm_flags:%08lx anon_vma:%p mapping:%p index:%lx\n",
 		(void *)addr, vma->vm_flags, vma->anon_vma, mapping, index);
@@ -715,6 +724,9 @@ copy_one_pte(struct mm_struct *dst_mm, struct mm_struct *src_mm,
 	}
 
 out_set_pte:
+	/*if (mmap_snapshot_instance.ksnap_userdata_copy){
+	  printk("c ");
+	  }*/
 	set_pte_at(dst_mm, addr, dst_pte, pte);
 	return 0;
 }
@@ -915,6 +927,7 @@ static unsigned long zap_pte_range(struct mmu_gather *tlb,
 			struct page *page;
 
 			page = vm_normal_page(vma, addr, ptent);
+
 			if (unlikely(details) && page) {
 				/*
 				 * unmap_shared_mapping_pages() wants to
@@ -953,9 +966,16 @@ static unsigned long zap_pte_range(struct mmu_gather *tlb,
 					mark_page_accessed(page);
 				rss[MM_FILEPAGES]--;
 			}
+			/*page->snap_page_debug[15]+=1;
+			if (page->snap_page_debug[12]==666){
+			  printk(KERN_ALERT "removing page %p from rmap count is %d\n", page, page_mapcount(page));
+			  }*/
+
 			page_remove_rmap(page);
-			if (unlikely(page_mapcount(page) < 0))
+			if (unlikely(page_mapcount(page) < 0)){
+				printk(KERN_ALERT "page_mapcount < 0, page PTE at %p\n", addr);
 				print_bad_pte(vma, addr, ptent, page);
+			}
 			tlb_remove_page(tlb, page);
 			continue;
 		}
@@ -966,15 +986,19 @@ static unsigned long zap_pte_range(struct mmu_gather *tlb,
 		if (unlikely(details))
 			continue;
 		if (pte_file(ptent)) {
-			if (unlikely(!(vma->vm_flags & VM_NONLINEAR)))
+			if (unlikely(!(vma->vm_flags & VM_NONLINEAR))){
+				printk(KERN_ALERT "NON LINEAR FAILURE\n", addr);
 				print_bad_pte(vma, addr, ptent, NULL);
+			}
 		} else {
 			swp_entry_t entry = pte_to_swp_entry(ptent);
 
 			if (!non_swap_entry(entry))
 				rss[MM_SWAPENTS]--;
-			if (unlikely(!free_swap_and_cache(entry)))
+			if (unlikely(!free_swap_and_cache(entry))){
+				printk(KERN_ALERT "free_swap_and_cache FAILURE\n", addr);
 				print_bad_pte(vma, addr, ptent, NULL);
+			}
 		}
 		pte_clear_not_present_full(mm, addr, pte, tlb->fullmm);
 	} while (pte++, addr += PAGE_SIZE, (addr != end && *zap_work > 0));
@@ -1042,6 +1066,7 @@ static unsigned long unmap_page_range(struct mmu_gather *tlb,
 		details = NULL;
 
 	BUG_ON(addr >= end);
+
 	mem_cgroup_uncharge_start();
 	tlb_start_vma(tlb, vma);
 	pgd = pgd_offset(vma->vm_mm, addr);
@@ -1116,6 +1141,13 @@ unsigned long unmap_vmas(struct mmu_gather **tlbp,
 		end = min(vma->vm_end, end_addr);
 		if (end <= vma->vm_start)
 			continue;
+
+		if (mmap_snapshot_instance.is_snapshot && 
+		    mmap_snapshot_instance.is_snapshot(vma, NULL, NULL) &&
+		    mmap_snapshot_instance.ksnap_close){
+		  //perform Conversion cleanup
+		  mmap_snapshot_instance.ksnap_close(vma);
+		}
 
 		if (vma->vm_flags & VM_ACCOUNT)
 			*nr_accounted += (end - start) >> PAGE_SHIFT;
@@ -1338,6 +1370,8 @@ no_page_table:
 		return ERR_PTR(-EFAULT);
 	return page;
 }
+
+EXPORT_SYMBOL_GPL(follow_page);
 
 int __get_user_pages(struct task_struct *tsk, struct mm_struct *mm,
 		     unsigned long start, int nr_pages, unsigned int gup_flags,
@@ -2115,7 +2149,7 @@ static int do_wp_page(struct mm_struct *mm, struct vm_area_struct *vma,
 	int reuse = 0, ret = 0;
 	int page_mkwrite = 0;
 	struct page *dirty_page = NULL;
-
+	
 	old_page = vm_normal_page(vma, address, orig_pte);
 	if (!old_page) {
 		/*
@@ -2136,6 +2170,7 @@ static int do_wp_page(struct mm_struct *mm, struct vm_area_struct *vma,
 	 * not dirty accountable.
 	 */
 	if (PageAnon(old_page) && !PageKsm(old_page)) {
+	
 		if (!trylock_page(old_page)) {
 			page_cache_get(old_page);
 			pte_unmap_unlock(page_table, ptl);
@@ -2148,16 +2183,27 @@ static int do_wp_page(struct mm_struct *mm, struct vm_area_struct *vma,
 				goto unlock;
 			}
 			page_cache_release(old_page);
+	
 		}
-		reuse = reuse_swap_page(old_page);
-		if (reuse)
+		/*don't reuse if snapshot*/
+		if (mmap_snapshot_instance.is_snapshot && 
+		    mmap_snapshot_instance.is_snapshot(vma, NULL, NULL)){
+		  reuse=0;
+		}
+		else{
+			reuse = reuse_swap_page(old_page);
+		}
+		
+		if (reuse){
 			/*
 			 * The page is all ours.  Move it to our anon_vma so
 			 * the rmap code will not search our parent or siblings.
 			 * Protected against the rmap code by the page lock.
 			 */
 			page_move_anon_rmap(old_page, vma, address);
+		}
 		unlock_page(old_page);
+	
 	} else if (unlikely((vma->vm_flags & (VM_WRITE|VM_SHARED)) ==
 					(VM_WRITE|VM_SHARED))) {
 		/*
@@ -2165,6 +2211,7 @@ static int do_wp_page(struct mm_struct *mm, struct vm_area_struct *vma,
 		 * read-only shared pages can get COWed by
 		 * get_user_pages(.write=1, .force=1).
 		 */
+	
 		if (vma->vm_ops && vma->vm_ops->page_mkwrite) {
 			struct vm_fault vmf;
 			int tmp;
@@ -2174,7 +2221,6 @@ static int do_wp_page(struct mm_struct *mm, struct vm_area_struct *vma,
 			vmf.pgoff = old_page->index;
 			vmf.flags = FAULT_FLAG_WRITE|FAULT_FLAG_MKWRITE;
 			vmf.page = old_page;
-
 			/*
 			 * Notify the address space that the page is about to
 			 * become writable so that it can prohibit this or wait
@@ -2185,16 +2231,18 @@ static int do_wp_page(struct mm_struct *mm, struct vm_area_struct *vma,
 			 */
 			page_cache_get(old_page);
 			pte_unmap_unlock(page_table, ptl);
-
 			tmp = vma->vm_ops->page_mkwrite(vma, &vmf);
 			if (unlikely(tmp &
 					(VM_FAULT_ERROR | VM_FAULT_NOPAGE))) {
+	
 				ret = tmp;
 				goto unwritable_page;
 			}
 			if (unlikely(!(tmp & VM_FAULT_LOCKED))) {
 				lock_page(old_page);
+	
 				if (!old_page->mapping) {
+	
 					ret = 0; /* retry the fault */
 					unlock_page(old_page);
 					goto unwritable_page;
@@ -2211,6 +2259,7 @@ static int do_wp_page(struct mm_struct *mm, struct vm_area_struct *vma,
 			page_table = pte_offset_map_lock(mm, pmd, address,
 							 &ptl);
 			if (!pte_same(*page_table, orig_pte)) {
+	
 				unlock_page(old_page);
 				page_cache_release(old_page);
 				goto unlock;
@@ -2221,6 +2270,7 @@ static int do_wp_page(struct mm_struct *mm, struct vm_area_struct *vma,
 		dirty_page = old_page;
 		get_page(dirty_page);
 		reuse = 1;
+	
 	}
 
 	if (reuse) {
@@ -2237,13 +2287,15 @@ reuse:
 	/*
 	 * Ok, we need to copy. Oh, well..
 	 */
+	
 	page_cache_get(old_page);
+	
 gotten:
 	pte_unmap_unlock(page_table, ptl);
 
 	if (unlikely(anon_vma_prepare(vma)))
 		goto oom;
-
+	
 	if (is_zero_pfn(pte_pfn(orig_pte))) {
 		new_page = alloc_zeroed_user_highpage_movable(vma, address);
 		if (!new_page)
@@ -2252,7 +2304,8 @@ gotten:
 		new_page = alloc_page_vma(GFP_HIGHUSER_MOVABLE, vma, address);
 		if (!new_page)
 			goto oom;
-		cow_user_page(new_page, old_page, address, vma);
+	
+		  cow_user_page(new_page, old_page, address, vma);
 	}
 	__SetPageUptodate(new_page);
 
@@ -2261,11 +2314,12 @@ gotten:
 	 * keep the mlocked page.
 	 */
 	if ((vma->vm_flags & VM_LOCKED) && old_page) {
+	
 		lock_page(old_page);	/* for LRU manipulation */
 		clear_page_mlock(old_page);
 		unlock_page(old_page);
 	}
-
+	
 	if (mem_cgroup_newpage_charge(new_page, mm, GFP_KERNEL))
 		goto oom_free_new;
 
@@ -2274,8 +2328,10 @@ gotten:
 	 */
 	page_table = pte_offset_map_lock(mm, pmd, address, &ptl);
 	if (likely(pte_same(*page_table, orig_pte))) {
+	
 		if (old_page) {
 			if (!PageAnon(old_page)) {
+	
 				dec_mm_counter_fast(mm, MM_FILEPAGES);
 				inc_mm_counter_fast(mm, MM_ANONPAGES);
 			}
@@ -2299,6 +2355,7 @@ gotten:
 		 */
 		set_pte_at_notify(mm, address, page_table, entry);
 		update_mmu_cache(vma, address, page_table);
+	
 		if (old_page) {
 			/*
 			 * Only after switching the pte to the new page may
@@ -2322,21 +2379,40 @@ gotten:
 			 * mapcount is visible. So transitively, TLBs to
 			 * old page will be flushed before it can be reused.
 			 */
+			
 			page_remove_rmap(old_page);
+			
+		}
+		
+		//we need to hold on to this page if it belongs to a snapshot (for the reference)
+		if (mmap_snapshot_instance.is_snapshot && 
+		    mmap_snapshot_instance.is_snapshot(vma, NULL, NULL)){
+		  lock_page(old_page);
+		  page_cache_get(old_page);
 		}
 
 		/* Free the old page.. */
 		new_page = old_page;
 		ret |= VM_FAULT_WRITE;
-	} else
+	} else{
 		mem_cgroup_uncharge_page(new_page);
+	}
 
 	if (new_page)
 		page_cache_release(new_page);
 	if (old_page)
 		page_cache_release(old_page);
+
 unlock:
 	pte_unmap_unlock(page_table, ptl);
+
+	if (mmap_snapshot_instance.is_snapshot && 
+	    mmap_snapshot_instance.is_snapshot(vma, NULL, NULL) &&
+		mmap_snapshot_instance.do_snapshot_add_pte){	   	
+		mmap_snapshot_instance.do_snapshot_add_pte(vma, old_page, page_table, address);
+		unlock_page(old_page);
+	}
+	
 	if (dirty_page) {
 		/*
 		 * Yes, Virginia, this is actually required to prevent a race
@@ -3061,6 +3137,14 @@ static int __do_fault(struct mm_struct *mm, struct vm_area_struct *vma,
 
 	pte_unmap_unlock(page_table, ptl);
 
+	//if its been a write, we need to add this info to the snapshot version list
+
+	if (flags & FAULT_FLAG_WRITE &&
+	    mmap_snapshot_instance.is_snapshot && 
+	    mmap_snapshot_instance.is_snapshot(vma, NULL, NULL) &&
+	     mmap_snapshot_instance.do_snapshot_add_pte){	   	
+		mmap_snapshot_instance.do_snapshot_add_pte(vma, NULL, page_table, address);
+	}
 out:
 	if (dirty_page) {
 		struct address_space *mapping = page->mapping;
@@ -3156,6 +3240,7 @@ static inline int handle_pte_fault(struct mm_struct *mm,
 	pte_t entry;
 	spinlock_t *ptl;
 
+
 	entry = *pte;
 	if (!pte_present(entry)) {
 		if (pte_none(entry)) {
@@ -3213,6 +3298,11 @@ int handle_mm_fault(struct mm_struct *mm, struct vm_area_struct *vma,
 	pmd_t *pmd;
 	pte_t *pte;
 
+
+	if (tim_debug_instance.tim_unmap_debug){
+		tim_debug_instance.tim_unmap_debug(vma, mm);	
+	}
+
 	__set_current_state(TASK_RUNNING);
 
 	count_vm_event(PGFAULT);
@@ -3224,15 +3314,21 @@ int handle_mm_fault(struct mm_struct *mm, struct vm_area_struct *vma,
 		return hugetlb_fault(mm, vma, address, flags);
 
 	pgd = pgd_offset(mm, address);
+	
 	pud = pud_alloc(mm, pgd, address);
+	
 	if (!pud)
 		return VM_FAULT_OOM;
 	pmd = pmd_alloc(mm, pud, address);
+	
 	if (!pmd)
 		return VM_FAULT_OOM;
 	pte = pte_alloc_map(mm, pmd, address);
+	
+	
 	if (!pte)
 		return VM_FAULT_OOM;
+
 
 	return handle_pte_fault(mm, vma, address, pte, pmd, flags);
 }
@@ -3258,6 +3354,7 @@ int __pud_alloc(struct mm_struct *mm, pgd_t *pgd, unsigned long address)
 	spin_unlock(&mm->page_table_lock);
 	return 0;
 }
+EXPORT_SYMBOL(__pud_alloc);
 #endif /* __PAGETABLE_PUD_FOLDED */
 
 #ifndef __PAGETABLE_PMD_FOLDED
@@ -3288,6 +3385,7 @@ int __pmd_alloc(struct mm_struct *mm, pud_t *pud, unsigned long address)
 	spin_unlock(&mm->page_table_lock);
 	return 0;
 }
+EXPORT_SYMBOL(__pmd_alloc);
 #endif /* __PAGETABLE_PMD_FOLDED */
 
 int make_pages_present(unsigned long addr, unsigned long end)

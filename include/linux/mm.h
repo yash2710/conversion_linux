@@ -319,9 +319,9 @@ static inline int page_count(struct page *page)
 
 static inline void get_page(struct page *page)
 {
-	page = compound_head(page);
-	VM_BUG_ON(atomic_read(&page->_count) == 0);
-	atomic_inc(&page->_count);
+  page = compound_head(page);
+  VM_BUG_ON(atomic_read(&page->_count) == 0);
+  atomic_inc(&page->_count);
 }
 
 static inline struct page *virt_to_head_page(const void *x)
@@ -1296,6 +1296,48 @@ extern int install_special_mapping(struct mm_struct *mm,
 				   unsigned long flags, struct page **pages);
 
 extern unsigned long get_unmapped_area(struct file *, unsigned long, unsigned long, unsigned long, unsigned long);
+
+/*shared mem snapshot structure*/
+struct mmap_snapshot{
+  int (*is_snapshot) (struct vm_area_struct *, struct mm_struct *, struct file *);	/* TODO: figure out what we actually need*/
+  int (*is_snapshot_read_only) (struct vm_area_struct *);
+  int (*is_snapshot_master) (struct vm_area_struct *);
+  int (*ksnap_open) (struct vm_area_struct *, unsigned long);
+  void (*ksnap_close) (struct vm_area_struct *);
+  int (*ksnap_tracking_on) (struct vm_area_struct *);
+  int (*ksnap_tracking_off) (struct vm_area_struct *);
+  void (*ksnap_userdata_copy) (struct vm_area_struct *, struct vm_area_struct *); 
+  void (*snapshot_msync) (struct vm_area_struct *, unsigned long);
+  int (*remove_snapshot) (struct vm_area_struct *);
+  int (*init_snapshot) (struct vm_area_struct *);
+  int (*remove_subscriber) (struct vm_area_struct *);
+  int (*init_subscriber) (struct vm_area_struct *, unsigned long);
+  int (*do_snapshot_add_pte) (struct vm_area_struct *, struct page *, pte_t *, unsigned long);
+  void (*stats_inc_pages_allocated) (void);
+  void (*stats_dec_pages_allocated) (void);
+  void (*ksnap_crash_handler)(int, struct page *);
+  int snap_sequence_number;
+};
+
+extern struct mmap_snapshot mmap_snapshot_instance;
+
+/*TIM's debugging functions*/
+
+struct tim_debug{
+  void (*tim_get_unmapped_area_debug) 
+  (struct vm_area_struct *, struct mm_struct *, struct file *,  const unsigned long);
+  void (*tim_unmap_debug)
+  (struct vm_area_struct *, struct mm_struct *);
+  struct page * page_of_interest;
+  void * ptr_of_interest1;  
+  void * ptr_of_interest2;
+  void * ptr_of_interest3;
+  void * ptr_of_interest4;
+  void * ptr_of_interest5;
+};
+
+extern struct tim_debug tim_debug_instance;
+
 
 extern unsigned long do_mmap_pgoff(struct file *file, unsigned long addr,
 	unsigned long len, unsigned long prot,

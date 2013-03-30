@@ -108,7 +108,10 @@ truncate_complete_page(struct address_space *mapping, struct page *page)
 	clear_page_mlock(page);
 	remove_from_page_cache(page);
 	ClearPageMappedToDisk(page);
+	//printk(KERN_ALERT "in truncate complete page...\n");
+	//dump_page(page);
 	page_cache_release(page);	/* pagecache ref */
+	//printk(KERN_ALERT "after page cache release\n");
 	return 0;
 }
 
@@ -139,6 +142,8 @@ invalidate_complete_page(struct address_space *mapping, struct page *page)
 
 int truncate_inode_page(struct address_space *mapping, struct page *page)
 {
+  //printk(KERN_ALERT "in truncate inode page\n");
+  //dump_page(page);
 	if (page_mapped(page)) {
 		unmap_mapping_range(mapping,
 				   (loff_t)page->index << PAGE_CACHE_SHIFT,
@@ -220,7 +225,8 @@ void truncate_inode_pages_range(struct address_space *mapping,
 
 	BUG_ON((lend & (PAGE_CACHE_SIZE - 1)) != (PAGE_CACHE_SIZE - 1));
 	end = (lend >> PAGE_CACHE_SHIFT);
-
+	if (tim_debug_instance.ptr_of_interest3 == mapping)
+	  printk(KERN_EMERG "ok, in truncate_inode_pages_range.\n");
 	pagevec_init(&pvec, 0);
 	next = start;
 	while (next <= end &&
@@ -228,7 +234,13 @@ void truncate_inode_pages_range(struct address_space *mapping,
 		for (i = 0; i < pagevec_count(&pvec); i++) {
 			struct page *page = pvec.pages[i];
 			pgoff_t page_index = page->index;
-
+			
+	
+			
+			//dump_page(page);
+			if (tim_debug_instance.ptr_of_interest3 == mapping){
+			  printk(KERN_EMERG "the nrpages is %d\n", mapping->nrpages);
+			}
 			if (page_index > end) {
 				next = page_index;
 				break;

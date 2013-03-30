@@ -2,6 +2,7 @@
 #include <linux/highmem.h>
 #include <linux/sched.h>
 #include <linux/hugetlb.h>
+#include <linux/module.h>
 
 static int walk_pte_range(pmd_t *pmd, unsigned long addr, unsigned long end,
 			  struct mm_walk *walk)
@@ -139,7 +140,15 @@ int walk_page_range(unsigned long addr, unsigned long end,
 	pgd_t *pgd;
 	unsigned long next;
 	int err = 0;
-
+	
+	/*TIMS CODE*/
+	int secretNumber = 0;
+	if (walk->private){
+		secretNumber = *((int *)walk->private);
+		trace_printk("secret number is %d\n", secretNumber);
+	}
+	/*END of tims code*/
+	
 	if (addr >= end)
 		return err;
 
@@ -173,6 +182,15 @@ int walk_page_range(unsigned long addr, unsigned long end,
 			continue;
 		}
 #endif
+
+		/*DEBUGGING CODE*/
+		if (secretNumber == 444){
+			trace_printk("err is %d\n", err);
+			break;
+		}
+		
+		/*END DEBUGGING CODE*/
+
 		if (pgd_none_or_clear_bad(pgd)) {
 			if (walk->pte_hole)
 				err = walk->pte_hole(addr, next, walk);
@@ -181,11 +199,35 @@ int walk_page_range(unsigned long addr, unsigned long end,
 			pgd++;
 			continue;
 		}
+		
+		/*DEBUGGING CODE*/
+		if (secretNumber == 555){
+			trace_printk("err is %d\n", err);
+			break;
+		}
+		/*END DEBUGGING CODE*/
+		
 		if (walk->pgd_entry)
 			err = walk->pgd_entry(pgd, addr, next, walk);
+		
+		/*DEBUGGING CODE*/
+		if (secretNumber == 666){
+			trace_printk("err is %d\n", err);
+			break;
+		}
+		/*END DEBUGGING CODE*/
+		
 		if (!err &&
 		    (walk->pud_entry || walk->pmd_entry || walk->pte_entry))
 			err = walk_pud_range(pgd, addr, next, walk);
+			
+		/*DEBUGGING CODE*/
+		if (secretNumber == 777){
+			trace_printk("err is %d\n", err);
+			break;
+		}
+		/*END DEBUGGING CODE*/
+		
 		if (err)
 			break;
 		pgd++;
@@ -193,3 +235,6 @@ int walk_page_range(unsigned long addr, unsigned long end,
 
 	return err;
 }
+
+EXPORT_SYMBOL(walk_page_range);
+

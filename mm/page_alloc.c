@@ -58,6 +58,11 @@
 #include <asm/div64.h>
 #include "internal.h"
 
+
+struct tim_debug tim_debug_instance;	/*debugging structure*/
+EXPORT_SYMBOL(tim_debug_instance);		/*need to export this bad boy!*/
+
+
 #ifdef CONFIG_USE_PERCPU_NUMA_NODE_ID
 DEFINE_PER_CPU(int, numa_node);
 EXPORT_PER_CPU_SYMBOL(numa_node);
@@ -309,6 +314,12 @@ static void bad_page(struct page *page)
 	}
 	if (nr_shown++ == 0)
 		resume = jiffies + 60 * HZ;
+
+	int i=0;
+	for (;i<20;++i){
+	  printk(KERN_ALERT "DEBUG %d: %lu\n", i, page->snap_page_debug[i]);
+	}
+
 
 	printk(KERN_ALERT "BUG: Bad page state in process %s  pfn:%05lx\n",
 		current->comm, page_to_pfn(page));
@@ -650,6 +661,9 @@ static bool free_pages_prepare(struct page *page, unsigned int order)
 
 	trace_mm_page_free_direct(page, order);
 	kmemcheck_free_shadow(page, order);
+
+	//printk(KERN_INFO "in free_pages_prepare\n");
+	//dump_page(page);
 
 	for (i = 0; i < (1 << order); i++) {
 		struct page *pg = page + i;
@@ -1164,6 +1178,13 @@ void free_hot_cold_page(struct page *page, int cold)
 	unsigned long flags;
 	int migratetype;
 	int wasMlocked = __TestClearPageMlocked(page);
+	//printk(KERN_ALERT "in free hot cold page\n");
+	//dump_page(page);
+
+	//some temporary snapshot stats
+	if(page->snap_page_debug[1]==mmap_snapshot_instance.snap_sequence_number && mmap_snapshot_instance.stats_dec_pages_allocated){
+	  mmap_snapshot_instance.stats_dec_pages_allocated();
+	}
 
 	if (!free_pages_prepare(page, 0))
 		return;
@@ -1312,6 +1333,7 @@ again:
 			page = list_entry(list->prev, struct page, lru);
 		else
 			page = list_entry(list->next, struct page, lru);
+
 
 		list_del(&page->lru);
 		pcp->count--;
@@ -1716,6 +1738,7 @@ try_next_zone:
 		zlc_active = 0;
 		goto zonelist_scan;
 	}
+
 	return page;
 }
 
@@ -5587,3 +5610,5 @@ void dump_page(struct page *page)
 		page->mapping, page->index);
 	dump_page_flags(page->flags);
 }
+
+EXPORT_SYMBOL(dump_page);

@@ -35,9 +35,10 @@ SYSCALL_DEFINE3(msync, unsigned long, start, size_t, len, int, flags)
 	struct vm_area_struct *vma;
 	int unmapped_error = 0;
 	int error = -EINVAL;
+	int snap_master = 0;
 
-	if (flags & ~(MS_ASYNC | MS_INVALIDATE | MS_SYNC))
-		goto out;
+	/*if (flags & ~(MS_ASYNC | MS_INVALIDATE | MS_SYNC))		/*SNAP: Need to get rid of this :)
+		goto out;*/
 	if (start & ~PAGE_MASK)
 		goto out;
 	if ((flags & MS_ASYNC) && (flags & MS_SYNC))
@@ -56,6 +57,18 @@ SYSCALL_DEFINE3(msync, unsigned long, start, size_t, len, int, flags)
 	 */
 	down_read(&mm->mmap_sem);
 	vma = find_vma(mm, start);
+	
+
+	//for ksnap, just do get/make and return
+	if (mmap_snapshot_instance.is_snapshot && 
+	    mmap_snapshot_instance.is_snapshot(vma, NULL, NULL) &&
+	    mmap_snapshot_instance.snapshot_msync &&
+	    ((flags &  MS_KSNAP_GET) || (flags & MS_KSNAP_MAKE) || 
+	     (flags & MS_KSNAP_GET_MERGE))){	//TODO: for commit, need to relax these constraints
+	  mmap_snapshot_instance.snapshot_msync(vma, flags);			//TODO: this function name in the struct should change
+	  goto out_unlock;
+	}
+	
 	for (;;) {
 		struct file *file;
 
@@ -78,8 +91,13 @@ SYSCALL_DEFINE3(msync, unsigned long, start, size_t, len, int, flags)
 		}
 		file = vma->vm_file;
 		start = vma->vm_end;
-		if ((flags & MS_SYNC) && file &&
-				(vma->vm_flags & VM_SHARED)) {
+		/*if ((flags & MS_SYNC) && file &&
+				( (vma->vm_flags & VM_SHARED) ||
+				  (mmap_snapshot_instance.is_snapshot_master && 
+				   mmap_snapshot_instance.is_snapshot_master(vma)) 
+				   )) {*/
+		
+		if ((flags & MS_SYNC) && file && (vma->vm_flags & VM_SHARED)) {
 			get_file(file);
 			up_read(&mm->mmap_sem);
 			error = vfs_fsync(file, 0);

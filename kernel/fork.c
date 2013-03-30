@@ -84,6 +84,9 @@ int nr_threads; 		/* The idle threads do not count.. */
 
 int max_threads;		/* tunable limit on nr_threads */
 
+int ksnap_debug_ptes_copied;
+
+
 DEFINE_PER_CPU(unsigned long, process_counts) = 0;
 
 __cacheline_aligned DEFINE_RWLOCK(tasklist_lock);  /* outer */
@@ -305,8 +308,10 @@ static int dup_mmap(struct mm_struct *mm, struct mm_struct *oldmm)
 	struct vm_area_struct *mpnt, *tmp, *prev, **pprev;
 	struct rb_node **rb_link, *rb_parent;
 	int retval;
+	int is_snap;
 	unsigned long charge;
 	struct mempolicy *pol;
+	struct timespec tv1, tv2;
 
 	down_write(&oldmm->mmap_sem);
 	flush_cache_dup_mm(oldmm);
@@ -334,7 +339,15 @@ static int dup_mmap(struct mm_struct *mm, struct mm_struct *oldmm)
 	for (mpnt = oldmm->mmap; mpnt; mpnt = mpnt->vm_next) {
 		struct file *file;
 
-		if (mpnt->vm_flags & VM_DONTCOPY) {
+		is_snap=0;
+		if (mmap_snapshot_instance.is_snapshot && 
+		    mmap_snapshot_instance.ksnap_userdata_copy &&
+		    mmap_snapshot_instance.is_snapshot(mpnt, NULL, NULL)){
+		  is_snap=1;
+		  printk("dont copy??? %d\n", mpnt->vm_flags & VM_DONTCOPY);
+		}
+
+		if ((mpnt->vm_flags & VM_DONTCOPY) && !is_snap) {
 			long pages = vma_pages(mpnt);
 			mm->total_vm -= pages;
 			vm_stat_account(mm, mpnt->vm_flags, mpnt->vm_file,
@@ -352,6 +365,11 @@ static int dup_mmap(struct mm_struct *mm, struct mm_struct *oldmm)
 		if (!tmp)
 			goto fail_nomem;
 		*tmp = *mpnt;
+		//need to copy user data for a forked snapshot
+		if (is_snap && 
+		    mmap_snapshot_instance.ksnap_userdata_copy){
+		  mmap_snapshot_instance.ksnap_userdata_copy(mpnt, tmp);
+		}
 		INIT_LIST_HEAD(&tmp->anon_vma_chain);
 		pol = mpol_dup(vma_policy(mpnt));
 		retval = PTR_ERR(pol);
@@ -403,7 +421,19 @@ static int dup_mmap(struct mm_struct *mm, struct mm_struct *oldmm)
 		rb_parent = &tmp->vm_rb;
 
 		mm->map_count++;
-		retval = copy_page_range(mm, oldmm, mpnt);
+		getrawmonotonic(&tv1);
+		retval=0;
+		if ((mpnt->vm_flags & VM_DONTCOPY)==0){
+		  /*if (is_snap){
+		    printk("copying!!!!\n");
+		    }*/
+		  retval = copy_page_range(mm, oldmm, mpnt);
+		}
+		getrawmonotonic(&tv2);
+		/*if (mmap_snapshot_instance.is_snapshot && is_snap){
+		  printk("time for cpr: %lu, copy? %d\n", tv2.tv_nsec - tv1.tv_nsec, mpnt->vm_flags & VM_DONTCOPY);
+		  }*/
+		
 
 		if (tmp->vm_ops && tmp->vm_ops->open)
 			tmp->vm_ops->open(tmp);
@@ -980,6 +1010,7 @@ static struct task_struct *copy_process(unsigned long clone_flags,
 	int retval;
 	struct task_struct *p;
 	int cgroup_callbacks_done = 0;
+	struct timespec tv1, tv2;
 
 	if ((clone_flags & (CLONE_NEWNS|CLONE_FS)) == (CLONE_NEWNS|CLONE_FS))
 		return ERR_PTR(-EINVAL);
@@ -1150,8 +1181,14 @@ static struct task_struct *copy_process(unsigned long clone_flags,
 		goto bad_fork_cleanup_fs;
 	if ((retval = copy_signal(clone_flags, p)))
 		goto bad_fork_cleanup_sighand;
+	getrawmonotonic(&tv1);
 	if ((retval = copy_mm(clone_flags, p)))
 		goto bad_fork_cleanup_signal;
+	getrawmonotonic(&tv2);
+	//if (mmap_snapshot_instance.ksnap_userdata_copy){
+	//printk(KERN_INFO " copy_mm: %lu\n", tv2.tv_nsec - tv1.tv_nsec);
+	//}
+
 	if ((retval = copy_namespaces(clone_flags, p)))
 		goto bad_fork_cleanup_mm;
 	if ((retval = copy_io(clone_flags, p)))
@@ -1391,7 +1428,7 @@ long do_fork(unsigned long clone_flags,
 	struct task_struct *p;
 	int trace = 0;
 	long nr;
-
+	struct timespec tv1,tv2;
 	/*
 	 * Do some preliminary argument and permissions checking before we
 	 * actually start allocating stuff
@@ -1430,8 +1467,14 @@ long do_fork(unsigned long clone_flags,
 	if (likely(user_mode(regs)))
 		trace = tracehook_prepare_clone(clone_flags);
 
+	getrawmonotonic(&tv1);
 	p = copy_process(clone_flags, stack_start, regs, stack_size,
 			 child_tidptr, NULL, trace);
+	getrawmonotonic(&tv2);
+	//if (mmap_snapshot_instance.ksnap_userdata_copy){
+	//printk(KERN_INFO " copy_process: %lu\n", tv2.tv_nsec - tv1.tv_nsec);
+	//}
+	    
 	/*
 	 * Do this prior waking up the new thread - the thread pointer
 	 * might get invalid after that point, if the thread exits quickly.

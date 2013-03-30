@@ -121,7 +121,7 @@ struct igbvf_buffer {
 		};
 		/* Rx */
 		struct {
-			struct page *page;
+			//struct page *page;
 			u64 page_dma;
 			unsigned int page_offset;
 		};

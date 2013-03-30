@@ -1389,6 +1389,7 @@ int mapping_tagged(struct address_space *mapping, int tag)
 	rcu_read_lock();
 	ret = radix_tree_tagged(&mapping->page_tree, tag);
 	rcu_read_unlock();
+	trace_printk("what is the result of this!!! %d\n", ret);
 	return ret;
 }
 EXPORT_SYMBOL(mapping_tagged);

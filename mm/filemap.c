@@ -411,6 +411,13 @@ int add_to_page_cache_locked(struct page *page, struct address_space *mapping,
 	if (error)
 		goto out;
 
+	if (tim_debug_instance.ptr_of_interest3 == mapping){
+	  if (mapping->nrpages > 130){
+	    printk(KERN_EMERG "greater than 130\n");
+	    dump_stack();
+	  }
+	}
+
 	error = radix_tree_preload(gfp_mask & ~__GFP_HIGHMEM);
 	if (error == 0) {
 		page_cache_get(page);
@@ -421,6 +428,9 @@ int add_to_page_cache_locked(struct page *page, struct address_space *mapping,
 		error = radix_tree_insert(&mapping->page_tree, offset, page);
 		if (likely(!error)) {
 			mapping->nrpages++;
+			if (tim_debug_instance.ptr_of_interest3 == mapping && mapping->nrpages == 132){
+			  printk(KERN_EMERG "its now 132...\n");
+			}
 			__inc_zone_page_state(page, NR_FILE_PAGES);
 			if (PageSwapBacked(page))
 				__inc_zone_page_state(page, NR_SHMEM);
@@ -649,14 +659,16 @@ repeat:
 	pagep = radix_tree_lookup_slot(&mapping->page_tree, offset);
 	if (pagep) {
 		page = radix_tree_deref_slot(pagep);
-		if (unlikely(!page))
+		if (unlikely(!page)){
 			goto out;
-		if (radix_tree_deref_retry(page))
+		}
+		if (radix_tree_deref_retry(page)){
 			goto repeat;
+		}
 
-		if (!page_cache_get_speculative(page))
+		if (!page_cache_get_speculative(page)){
 			goto repeat;
-
+		}
 		/*
 		 * Has the page moved?
 		 * This is part of the lockless pagecache protocol. See
@@ -669,6 +681,18 @@ repeat:
 	}
 out:
 	rcu_read_unlock();
+
+	/*if (tim_debug_instance.ptr_of_interest2 == page && tim_debug_instance.ptr_of_interest2 != NULL){
+	  printk("\n\n*******************FIND GET PAGE for pid %d, SPECIAL PAGE!!!!!*******************\n", current->pid);
+	  dump_page(page);
+	  printk("\n**************************************************\n\n");
+	}
+
+	if (tim_debug_instance.ptr_of_interest1 == mapping & tim_debug_instance.ptr_of_interest1 != NULL){
+	  printk("\n\n*******************FIND GET PAGE for pid %d, SOME OTHER GUY*******************\n", current->pid);
+	  dump_page(page);
+	  printk("\n**************************************************\n\n");
+	  }*/
 
 	return page;
 }

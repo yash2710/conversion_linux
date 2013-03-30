@@ -1038,7 +1038,17 @@ static unsigned long isolate_lru_pages(unsigned long nr_to_scan,
 			continue;
 
 		default:
-			BUG();
+		  printk(KERN_EMERG "uh oh!!!!\n\n\n\n");
+		  dump_page(page);
+		  int i;
+		  printk(KERN_EMERG "\n\ndebug flags\n\n");
+		  for (i=0;i<20;++i){
+		    printk(KERN_EMERG "%d %d ",i,page->snap_page_debug[i]);
+		  }
+		  printk(KERN_EMERG "\n\n");
+
+		  printk(KERN_EMERG "an LRU page? %d a file cache page? %d, mode %d, file %d\n", PageLRU(page), page_is_file_cache(page), mode, file);
+		  BUG();
 		}
 
 		if (!order)
