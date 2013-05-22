@@ -344,7 +344,6 @@ static int dup_mmap(struct mm_struct *mm, struct mm_struct *oldmm)
 		    mmap_snapshot_instance.ksnap_userdata_copy &&
 		    mmap_snapshot_instance.is_snapshot(mpnt, NULL, NULL)){
 		  is_snap=1;
-		  printk("dont copy??? %d\n", mpnt->vm_flags & VM_DONTCOPY);
 		}
 
 		if ((mpnt->vm_flags & VM_DONTCOPY) && !is_snap) {
@@ -424,9 +423,6 @@ static int dup_mmap(struct mm_struct *mm, struct mm_struct *oldmm)
 		getrawmonotonic(&tv1);
 		retval=0;
 		if ((mpnt->vm_flags & VM_DONTCOPY)==0){
-		  /*if (is_snap){
-		    printk("copying!!!!\n");
-		    }*/
 		  retval = copy_page_range(mm, oldmm, mpnt);
 		}
 		getrawmonotonic(&tv2);

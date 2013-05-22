@@ -669,6 +669,14 @@ __SYSCALL(__NR_fanotify_init, sys_fanotify_init)
 __SYSCALL(__NR_fanotify_mark, sys_fanotify_mark)
 #define __NR_prlimit64				302
 __SYSCALL(__NR_prlimit64, sys_prlimit64)
+#define __NR_conversion_sync                    303
+__SYSCALL(__NR_conversion_sync, sys_conversion_sync)
+#define __NR_task_clock_open                    304
+__SYSCALL(__NR_task_clock_open, sys_task_clock_open)
+#define __NR_conversion_determ_init                    305
+__SYSCALL(__NR_conversion_determ_init, sys_conversion_determ_init)
+#define __NR_task_clock_do                    306
+__SYSCALL(__NR_task_clock_do, sys_task_clock_do)
 
 #ifndef __NO_STUBS
 #define __ARCH_WANT_OLD_READDIR

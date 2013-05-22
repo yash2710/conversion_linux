@@ -26,7 +26,7 @@
 #include <linux/fs.h>
 #include <linux/rcupdate.h>
 #include <linux/hrtimer.h>
-
+#include <linux/perf_event.h>
 #include <asm/uaccess.h>
 
 
@@ -218,6 +218,7 @@ static void __pollwait(struct file *filp, wait_queue_head_t *wait_address,
 {
 	struct poll_wqueues *pwq = container_of(p, struct poll_wqueues, pt);
 	struct poll_table_entry *entry = poll_get_entry(pwq);
+
 	if (!entry)
 		return;
 	get_file(filp);

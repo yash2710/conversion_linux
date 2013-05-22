@@ -1022,8 +1022,9 @@ unsigned long do_mmap_pgoff(struct file *file, unsigned long addr,
 			mm->def_flags | VM_MAYREAD | VM_MAYWRITE | VM_MAYEXEC;
 
 	if (flags & MAP_LOCKED)
-		if (!can_do_mlock())
-			return -EPERM;
+	  if (!can_do_mlock()){
+	    return -EPERM;
+	  }
 
 	/* mlock MCL_FUTURE? */
 	if (vm_flags & VM_LOCKED) {
@@ -1035,6 +1036,7 @@ unsigned long do_mmap_pgoff(struct file *file, unsigned long addr,
 		if (locked > lock_limit && !capable(CAP_IPC_LOCK))
 			return -EAGAIN;
 	}
+
 
 	inode = file ? file->f_path.dentry->d_inode : NULL;
 
@@ -1066,8 +1068,9 @@ unsigned long do_mmap_pgoff(struct file *file, unsigned long addr,
 			if (!(file->f_mode & FMODE_READ))
 				return -EACCES;
 			if (file->f_path.mnt->mnt_flags & MNT_NOEXEC) {
-				if (vm_flags & VM_EXEC)
-					return -EPERM;
+			  if (vm_flags & VM_EXEC){
+			    return -EPERM;
+			  }
 				vm_flags &= ~VM_MAYEXEC;
 			}
 
@@ -1138,6 +1141,7 @@ SYSCALL_DEFINE6(mmap_pgoff, unsigned long, addr, unsigned long, len,
 	flags &= ~(MAP_EXECUTABLE | MAP_DENYWRITE);
 
 	down_write(&current->mm->mmap_sem);
+
 	retval = do_mmap_pgoff(file, addr, len, prot, flags, pgoff);
 	up_write(&current->mm->mmap_sem);
 

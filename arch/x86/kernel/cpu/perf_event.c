@@ -299,11 +299,10 @@ x86_perf_event_update(struct perf_event *event)
 again:
 	prev_raw_count = local64_read(&hwc->prev_count);
 	rdmsrl(hwc->event_base + idx, new_raw_count);
-
+	
 	if (local64_cmpxchg(&hwc->prev_count, prev_raw_count,
 					new_raw_count) != prev_raw_count)
 		goto again;
-
 	/*
 	 * Now we have the new raw value and have updated the prev
 	 * timestamp already. We can now calculate the elapsed delta
@@ -1200,6 +1199,7 @@ static int x86_pmu_handle_irq(struct pt_regs *regs)
 
 		if (perf_event_overflow(event, 1, &data, regs))
 			x86_pmu_stop(event, 0);
+
 	}
 
 	if (handled)

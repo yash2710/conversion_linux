@@ -1852,6 +1852,7 @@ alloc_page_vma(gfp_t gfp, struct vm_area_struct *vma, unsigned long addr)
 	put_mems_allowed();
 	return page;
 }
+EXPORT_SYMBOL(alloc_page_vma);
 
 /**
  * 	alloc_pages_current - Allocate pages.

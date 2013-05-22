@@ -15,6 +15,8 @@
 
 #include <sys/prctl.h>
 
+#include <sys/resource.h>
+
 #include <semaphore.h>
 #include <pthread.h>
 #include <math.h>

@@ -717,10 +717,14 @@ copy_one_pte(struct mm_struct *dst_mm, struct mm_struct *src_mm,
 	if (page) {
 		get_page(page);
 		page_dup_rmap(page);
-		if (PageAnon(page))
-			rss[MM_ANONPAGES]++;
-		else
-			rss[MM_FILEPAGES]++;
+		//we need to do our own accounting
+		if (!(mmap_snapshot_instance.is_snapshot && 
+                    mmap_snapshot_instance.is_snapshot(vma, NULL, NULL))){
+			if (PageAnon(page))
+				rss[MM_ANONPAGES]++;
+			else
+				rss[MM_FILEPAGES]++;
+		}
 	}
 
 out_set_pte:
@@ -2149,7 +2153,9 @@ static int do_wp_page(struct mm_struct *mm, struct vm_area_struct *vma,
 	int reuse = 0, ret = 0;
 	int page_mkwrite = 0;
 	struct page *dirty_page = NULL;
-	
+	int incremented_anon=0;
+	int is_conv_seg = (mmap_snapshot_instance.is_snapshot &&
+                           mmap_snapshot_instance.is_snapshot(vma, NULL, NULL));
 	old_page = vm_normal_page(vma, address, orig_pte);
 	if (!old_page) {
 		/*
@@ -2186,8 +2192,7 @@ static int do_wp_page(struct mm_struct *mm, struct vm_area_struct *vma,
 	
 		}
 		/*don't reuse if snapshot*/
-		if (mmap_snapshot_instance.is_snapshot && 
-		    mmap_snapshot_instance.is_snapshot(vma, NULL, NULL)){
+		if (is_conv_seg){
 		  reuse=0;
 		}
 		else{
@@ -2305,7 +2310,13 @@ gotten:
 		if (!new_page)
 			goto oom;
 	
-		  cow_user_page(new_page, old_page, address, vma);
+		
+		if (is_conv_seg && mmap_snapshot_instance.conv_cow_user_page){
+			mmap_snapshot_instance.conv_cow_user_page(new_page,old_page, address, vma, &init_mm);
+		}
+		else{
+			cow_user_page(new_page, old_page, address, vma);
+		}
 	}
 	__SetPageUptodate(new_page);
 
@@ -2331,12 +2342,15 @@ gotten:
 	
 		if (old_page) {
 			if (!PageAnon(old_page)) {
-	
 				dec_mm_counter_fast(mm, MM_FILEPAGES);
+				incremented_anon=1;
 				inc_mm_counter_fast(mm, MM_ANONPAGES);
 			}
-		} else
+		} else {
+			incremented_anon=1;
 			inc_mm_counter_fast(mm, MM_ANONPAGES);
+		}
+
 		flush_cache_page(vma, address, pte_pfn(orig_pte));
 		entry = mk_pte(new_page, vma->vm_page_prot);
 		entry = maybe_mkwrite(pte_mkdirty(entry), vma);
@@ -2385,8 +2399,7 @@ gotten:
 		}
 		
 		//we need to hold on to this page if it belongs to a snapshot (for the reference)
-		if (mmap_snapshot_instance.is_snapshot && 
-		    mmap_snapshot_instance.is_snapshot(vma, NULL, NULL)){
+		if (is_conv_seg){
 		  lock_page(old_page);
 		  page_cache_get(old_page);
 		}
@@ -2406,13 +2419,14 @@ gotten:
 unlock:
 	pte_unmap_unlock(page_table, ptl);
 
-	if (mmap_snapshot_instance.is_snapshot && 
-	    mmap_snapshot_instance.is_snapshot(vma, NULL, NULL) &&
-		mmap_snapshot_instance.do_snapshot_add_pte){	   	
+	if (is_conv_seg &&
+		mmap_snapshot_instance.do_snapshot_add_pte){
 		mmap_snapshot_instance.do_snapshot_add_pte(vma, old_page, page_table, address);
+		if (incremented_anon==1){
+			dec_mm_counter_fast(mm, MM_ANONPAGES);
+		}
 		unlock_page(old_page);
 	}
-	
 	if (dirty_page) {
 		/*
 		 * Yes, Virginia, this is actually required to prevent a race
@@ -3011,6 +3025,10 @@ static int __do_fault(struct mm_struct *mm, struct vm_area_struct *vma,
 	vmf.page = NULL;
 
 	ret = vma->vm_ops->fault(vma, &vmf);
+
+	int is_conv_seg = (mmap_snapshot_instance.is_snapshot &&
+                           mmap_snapshot_instance.is_snapshot(vma, NULL, NULL));
+
 	if (unlikely(ret & (VM_FAULT_ERROR | VM_FAULT_NOPAGE |
 			    VM_FAULT_RETRY)))
 		return ret;
@@ -3112,10 +3130,14 @@ static int __do_fault(struct mm_struct *mm, struct vm_area_struct *vma,
 		if (flags & FAULT_FLAG_WRITE)
 			entry = maybe_mkwrite(pte_mkdirty(entry), vma);
 		if (anon) {
-			inc_mm_counter_fast(mm, MM_ANONPAGES);
+			if (!(is_conv_seg)){
+				inc_mm_counter_fast(mm, MM_ANONPAGES);
+			}
 			page_add_new_anon_rmap(page, vma, address);
 		} else {
-			inc_mm_counter_fast(mm, MM_FILEPAGES);
+			if (!(is_conv_seg)){
+                                inc_mm_counter_fast(mm, MM_FILEPAGES);
+                        }
 			page_add_file_rmap(page);
 			if (flags & FAULT_FLAG_WRITE) {
 				dirty_page = page;
@@ -3140,9 +3162,14 @@ static int __do_fault(struct mm_struct *mm, struct vm_area_struct *vma,
 	//if its been a write, we need to add this info to the snapshot version list
 
 	if (flags & FAULT_FLAG_WRITE &&
-	    mmap_snapshot_instance.is_snapshot && 
-	    mmap_snapshot_instance.is_snapshot(vma, NULL, NULL) &&
-	     mmap_snapshot_instance.do_snapshot_add_pte){	   	
+	     is_conv_seg &&
+	     mmap_snapshot_instance.do_snapshot_add_pte){
+		//decrement the counter...we do our own accounting and this will screw it up
+		if (anon) {
+                        dec_mm_counter_fast(mm, MM_ANONPAGES);
+                } else {
+                        dec_mm_counter_fast(mm, MM_FILEPAGES);
+		}
 		mmap_snapshot_instance.do_snapshot_add_pte(vma, NULL, page_table, address);
 	}
 out:

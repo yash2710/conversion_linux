@@ -91,6 +91,7 @@ struct sched_param {
 #include <linux/kobject.h>
 #include <linux/latencytop.h>
 #include <linux/cred.h>
+#include <linux/task_clock.h>
 
 #include <asm/processor.h>
 
@@ -1512,6 +1513,7 @@ struct task_struct {
 		unsigned long memsw_bytes; /* uncharged mem+swap usage */
 	} memcg_batch;
 #endif
+  struct task_clock_info task_clock;
 };
 
 /* Future-safe accessor for struct task_struct's cpus_allowed. */

@@ -542,6 +542,14 @@ dotraplinkage void __kprobes do_debug(struct pt_regs *regs, long error_code)
 	/* Filter out all the reserved bits which are preset to 1 */
 	dr6 &= ~DR6_RESERVED;
 
+	//printk( KERN_EMERG "dodebug %p pid %d\n", instruction_pointer(regs), current->pid);
+
+	if (current->task_clock.user_status &&
+	    task_clock_func.task_clock_entry_is_singlestep &&
+	    task_clock_func.task_clock_entry_is_singlestep(current->task_clock.group_info, regs)){
+		return;
+        }
+
 	/*
 	 * If dr6 has no reason to give us about the origin of this trap,
 	 * then it's very likely the result of an icebp/int01 trap.
@@ -592,8 +600,9 @@ dotraplinkage void __kprobes do_debug(struct pt_regs *regs, long error_code)
 		regs->flags &= ~X86_EFLAGS_TF;
 	}
 	si_code = get_si_code(tsk->thread.debugreg6);
-	if (tsk->thread.debugreg6 & (DR_STEP | DR_TRAP_BITS) || user_icebp)
+	if (tsk->thread.debugreg6 & (DR_STEP | DR_TRAP_BITS) || user_icebp){
 		send_sigtrap(tsk, regs, error_code, si_code);
+	}
 	preempt_conditional_cli(regs);
 
 	return;

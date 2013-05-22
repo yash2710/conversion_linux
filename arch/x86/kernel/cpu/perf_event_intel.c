@@ -674,6 +674,7 @@ static void intel_pmu_enable_event(struct perf_event *event)
 static int intel_pmu_save_and_restart(struct perf_event *event)
 {
 	x86_perf_event_update(event);
+	perf_event_overflow_update_period(event);
 	return x86_perf_event_set_period(event);
 }
 
@@ -864,6 +865,7 @@ static void intel_pmu_cpu_starting(int cpu)
 	 * Deal with CPUs that don't clear their LBRs on power-up.
 	 */
 	intel_pmu_lbr_reset();
+	set_in_cr4(X86_CR4_PCE);
 }
 
 static void intel_pmu_cpu_dying(int cpu)
@@ -958,6 +960,7 @@ static __init int intel_pmu_init(void)
 	x86_pmu.version			= version;
 	x86_pmu.num_counters		= eax.split.num_counters;
 	x86_pmu.cntval_bits		= eax.split.bit_width;
+	printk(KERN_EMERG " cnt val bits???? %d version %d\n", x86_pmu.cntval_bits, version);
 	x86_pmu.cntval_mask		= (1ULL << eax.split.bit_width) - 1;
 
 	/*

@@ -214,9 +214,12 @@ struct perf_event_attr {
 				 *  See also PERF_RECORD_MISC_EXACT_IP
 				 */
 				precise_ip     :  2, /* skid constraint       */
-				mmap_data      :  1, /* non-exec mmap data    */
-
-				__reserved_1   : 46;
+	                        mmap_data      :  1, /* non-exec mmap data    */
+                                sample_id_all  :  1, /* sample_type all events */
+                        	exclude_host   :  1, /* don't count in host   */
+	                        exclude_guest  :  1, /* don't count in guest  */
+	                        task_clock     :  1,
+	                        __reserved_1   : 42;
 
 	union {
 		__u32		wakeup_events;	  /* wakeup every n events */
@@ -238,6 +241,21 @@ struct perf_event_attr {
 #define PERF_EVENT_IOC_PERIOD		_IOW('$', 4, __u64)
 #define PERF_EVENT_IOC_SET_OUTPUT	_IO ('$', 5)
 #define PERF_EVENT_IOC_SET_FILTER	_IOW('$', 6, char *)
+#define PERF_EVENT_IOC_TASK_CLOCK_HALT _IO ('$', 7)
+#define PERF_EVENT_IOC_TASK_CLOCK_ACTIVATE _IO ('$', 8)
+#define PERF_EVENT_IOC_TASK_CLOCK_ACTIVATE_OTHER _IO ('$', 9)
+#define PERF_EVENT_IOC_TASK_CLOCK_WAIT _IO ('$', 10)
+#define PERF_EVENT_IOC_TASK_CLOCK_SLEEP _IO ('$', 11)
+#define PERF_EVENT_IOC_TASK_CLOCK_ADD_TICKS _IO ('$', 12)
+#define PERF_EVENT_IOC_TASK_CLOCK_WOKE_UP _IO ('$', 13)
+#define PERF_EVENT_IOC_TASK_CLOCK_STOP _IO ('$', 14)
+#define PERF_EVENT_IOC_TASK_CLOCK_START _IO ('$', 15)
+#define PERF_EVENT_IOC_TASK_CLOCK_RESET _IO ('$', 16)
+#define PERF_EVENT_IOC_TASK_CLOCK_STOP_NO_NOTIFY _IO ('$', 17)
+#define PERF_EVENT_IOC_TASK_CLOCK_START_NO_NOTIFY _IO ('$', 18)
+#define PERF_EVENT_IOC_TASK_CLOCK_READ_CLOCK _IO ('$', 19)
+
+extern int tim_perf_debug_counter;
 
 enum perf_event_ioc_flags {
 	PERF_IOC_FLAG_GROUP		= 1U << 0,
@@ -810,12 +828,18 @@ struct perf_event {
 
 	perf_overflow_handler_t		overflow_handler;
 
+	u64 				last_written;
+
 #ifdef CONFIG_EVENT_TRACING
 	struct ftrace_event_call	*tp_event;
 	struct event_filter		*filter;
 #endif
 
 #endif /* CONFIG_PERF_EVENTS */
+
+  /*TASK CLOCK STUFF*/
+  struct task_clock_group_info    *task_clock_group;
+  wait_queue_head_t		task_clock_waitq;
 };
 
 enum perf_event_context_type {
@@ -965,6 +989,8 @@ extern void perf_prepare_sample(struct perf_event_header *header,
 				struct perf_sample_data *data,
 				struct perf_event *event,
 				struct pt_regs *regs);
+
+extern void perf_event_overflow_update_period(struct perf_event *event);
 
 extern int perf_event_overflow(struct perf_event *event, int nmi,
 				 struct perf_sample_data *data,
