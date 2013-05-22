@@ -214,9 +214,12 @@ struct perf_event_attr {
 				 *  See also PERF_RECORD_MISC_EXACT_IP
 				 */
 				precise_ip     :  2, /* skid constraint       */
-				mmap_data      :  1, /* non-exec mmap data    */
-
-				__reserved_1   : 46;
+	                        mmap_data      :  1, /* non-exec mmap data    */
+                                sample_id_all  :  1, /* sample_type all events */
+                        	exclude_host   :  1, /* don't count in host   */
+	                        exclude_guest  :  1, /* don't count in guest  */
+	                        task_clock     :  1,
+	                        __reserved_1   : 42;
 
 	union {
 		__u32		wakeup_events;	  /* wakeup every n events */
@@ -238,6 +241,7 @@ struct perf_event_attr {
 #define PERF_EVENT_IOC_PERIOD		_IOW('$', 4, __u64)
 #define PERF_EVENT_IOC_SET_OUTPUT	_IO ('$', 5)
 #define PERF_EVENT_IOC_SET_FILTER	_IOW('$', 6, char *)
+#define PERF_EVENT_IOC_TASK_CLOCK_REMOVE _IO ('$', 7)
 
 enum perf_event_ioc_flags {
 	PERF_IOC_FLAG_GROUP		= 1U << 0,
@@ -816,6 +820,7 @@ struct perf_event {
 #endif
 
 #endif /* CONFIG_PERF_EVENTS */
+        struct task_clock_group_info    *task_clock_group;
 };
 
 enum perf_event_context_type {

@@ -32,6 +32,7 @@
 #include <linux/perf_event.h>
 #include <linux/ftrace_event.h>
 #include <linux/hw_breakpoint.h>
+#include <linux/task_clock.h>
 
 #include <asm/irq_regs.h>
 
@@ -2461,6 +2462,8 @@ static unsigned int perf_poll(struct file *file, poll_table *wait)
 	struct perf_buffer *buffer;
 	unsigned int events = POLL_HUP;
 
+	printk(KERN_EMERG "in poll %d\n", current->pid);
+
 	rcu_read_lock();
 	buffer = rcu_dereference(event->buffer);
 	if (buffer)
@@ -2468,6 +2471,8 @@ static unsigned int perf_poll(struct file *file, poll_table *wait)
 	rcu_read_unlock();
 
 	poll_wait(file, &event->waitq, wait);
+
+	printk(KERN_EMERG "woke up from poll %d\n", current->pid);
 
 	return events;
 }
@@ -2583,10 +2588,17 @@ static long perf_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		break;
 	case PERF_EVENT_IOC_DISABLE:
 		func = perf_event_disable;
+		if (event->attr.task_clock && task_clock_func.task_clock_on_disable){
+		  printk(KERN_EMERG "DISABLE for task clock\n");
+		  task_clock_func.task_clock_on_disable(event->task_clock_group);
+		}
 		break;
 	case PERF_EVENT_IOC_RESET:
 		func = perf_event_reset;
 		break;
+	case PERF_EVENT_IOC_TASK_CLOCK_REMOVE:
+	  printk(KERN_EMERG "REMOVING TASK CLOCK!!!!\n");
+	  break;
 
 	case PERF_EVENT_IOC_REFRESH:
 		return perf_event_refresh(event, arg);
@@ -3708,6 +3720,11 @@ static void perf_event_output(struct perf_event *event, int nmi,
 	perf_output_sample(&handle, &header, data, event);
 
 	perf_output_end(&handle);
+
+	//TASK_CLOCK call
+	if (task_clock_func.task_clock_overflow_handler){
+	  task_clock_func.task_clock_overflow_handler(event->task_clock_group);
+	}
 
 exit:
 	rcu_read_unlock();
@@ -5570,7 +5587,7 @@ SYSCALL_DEFINE5(perf_event_open,
 		struct perf_event_attr __user *, attr_uptr,
 		pid_t, pid, int, cpu, int, group_fd, unsigned long, flags)
 {
-	struct perf_event *group_leader = NULL, *output_event = NULL;
+  struct perf_event *group_leader = NULL, *output_event = NULL, *task_clock_leader=NULL;
 	struct perf_event *event, *sibling;
 	struct perf_event_attr attr;
 	struct perf_event_context *ctx;
@@ -5605,6 +5622,14 @@ SYSCALL_DEFINE5(perf_event_open,
 	if (event_fd < 0)
 		return event_fd;
 
+	//get the group leader for this task_clock
+	if (attr.task_clock && group_fd != -1){
+	  task_clock_leader = perf_fget_light(group_fd, &fput_needed);
+	  fput_needed=0;
+	  group_fd=-1;
+	  printk(KERN_EMERG "task clock leader is %p\n", task_clock_leader);
+	}
+
 	if (group_fd != -1) {
 		group_leader = perf_fget_light(group_fd, &fput_needed);
 		if (IS_ERR(group_leader)) {
@@ -5630,6 +5655,25 @@ SYSCALL_DEFINE5(perf_event_open,
 	if (IS_ERR(event)) {
 		err = PTR_ERR(event);
 		goto err_task;
+	}
+
+	/* setup the task_clock stuff */
+	if (attr.task_clock) {
+	  //TASK_CLOCK call                                                                    
+	  if (task_clock_leader){
+	    printk(KERN_EMERG "there is a leader\n");
+	    event->task_clock_group=task_clock_leader->task_clock_group;
+	    
+	  }
+	  else{
+	    if (!task_clock_func.task_clock_group_init){
+	      goto err_task;
+	    }
+	    event->task_clock_group=task_clock_func.task_clock_group_init();
+	  }
+	  if (task_clock_func.task_clock_entry_init){
+	    task_clock_func.task_clock_entry_init(event->task_clock_group, event);
+	  }
 	}
 
 	/*

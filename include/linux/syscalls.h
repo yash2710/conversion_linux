@@ -833,4 +833,8 @@ asmlinkage long sys_mmap_pgoff(unsigned long addr, unsigned long len,
 			unsigned long fd, unsigned long pgoff);
 asmlinkage long sys_old_mmap(struct mmap_arg_struct __user *arg);
 
+asmlinkage long sys_conversion_sync(unsigned long start, int flags);
+
+asmlinkage long sys_task_clock_open(int fd, unsigned long tick_arr, int tid);
+
 #endif

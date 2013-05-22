@@ -851,4 +851,6 @@ ia32_sys_call_table:
 	.quad sys_fanotify_init
 	.quad sys32_fanotify_mark
 	.quad sys_prlimit64		/* 340 */
+	.quad sys_conversion_sync
+	.quad sys_task_clock_open       /* 341 */
 ia32_syscall_end:
