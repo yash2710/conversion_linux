@@ -241,7 +241,8 @@ struct perf_event_attr {
 #define PERF_EVENT_IOC_PERIOD		_IOW('$', 4, __u64)
 #define PERF_EVENT_IOC_SET_OUTPUT	_IO ('$', 5)
 #define PERF_EVENT_IOC_SET_FILTER	_IOW('$', 6, char *)
-#define PERF_EVENT_IOC_TASK_CLOCK_REMOVE _IO ('$', 7)
+#define PERF_EVENT_IOC_TASK_CLOCK_HALT _IO ('$', 7)
+#define PERF_EVENT_IOC_TASK_CLOCK_ACTIVATE _IO ('$', 8)
 
 enum perf_event_ioc_flags {
 	PERF_IOC_FLAG_GROUP		= 1U << 0,
@@ -820,7 +821,10 @@ struct perf_event {
 #endif
 
 #endif /* CONFIG_PERF_EVENTS */
-        struct task_clock_group_info    *task_clock_group;
+
+  /*TASK CLOCK STUFF*/
+  struct task_clock_group_info    *task_clock_group;
+  wait_queue_head_t		task_clock_waitq;
 };
 
 enum perf_event_context_type {
