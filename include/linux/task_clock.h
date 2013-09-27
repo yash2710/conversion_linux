@@ -9,12 +9,8 @@
 
 //used by userspace to know what is going on
 struct task_clock_user_status{
-  uint8_t lowest_clock; //set when you inactivate the clock
-  //when the counter is stopped, the count gets reset to 0...but we need
-  //that to persist. So, "ticks" is the current counter value and base_ticks
-  //stores the values in previous counter sessions
+  uint64_t lowest_clock; //set when you inactivate the clock
   uint64_t ticks;
-  uint64_t base_ticks;
 };__attribute__ ((aligned (8), packed));
 
 struct task_clock_info{
