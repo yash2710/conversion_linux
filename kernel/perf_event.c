@@ -2463,8 +2463,6 @@ static unsigned int perf_poll(struct file *file, poll_table *wait)
 	unsigned int events = POLL_HUP;
 	void * old_private=NULL;
 
-	printk(KERN_EMERG "in poll %d\n", current->pid);
-
 	rcu_read_lock();
 	buffer = rcu_dereference(event->buffer);
 	if (buffer)
@@ -2593,16 +2591,21 @@ static long perf_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	switch (cmd) {
 	case PERF_EVENT_IOC_ENABLE:
 		func = perf_event_enable;
+		if (event->attr.task_clock && task_clock_func.task_clock_on_enable){
+                  task_clock_func.task_clock_on_enable(event->task_clock_group);
+                }
 		break;
 	case PERF_EVENT_IOC_DISABLE:
 		func = perf_event_disable;
-		if (event->attr.task_clock && task_clock_func.task_clock_on_disable){
-		  task_clock_func.task_clock_on_disable(event->task_clock_group);
-		}
 		break;
 	case PERF_EVENT_IOC_RESET:
 		func = perf_event_reset;
 		break;
+	case PERF_EVENT_IOC_TASK_CLOCK_SLEEP:
+	  if (event->attr.task_clock && task_clock_func.task_clock_entry_sleep){
+            task_clock_func.task_clock_entry_sleep(event->task_clock_group);
+          }
+	  return 0;
 	case PERF_EVENT_IOC_TASK_CLOCK_HALT:
 	  if (event->attr.task_clock && task_clock_func.task_clock_entry_halt){
 	    task_clock_func.task_clock_entry_halt(event->task_clock_group);
@@ -2612,6 +2615,16 @@ static long perf_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	  if (event->attr.task_clock && task_clock_func.task_clock_entry_activate){
 	    task_clock_func.task_clock_entry_activate(event->task_clock_group);
 	  }
+          return 0;
+	case PERF_EVENT_IOC_TASK_CLOCK_ACTIVATE_OTHER:
+	  if (event->attr.task_clock && task_clock_func.task_clock_entry_activate_other){
+            task_clock_func.task_clock_entry_activate_other(event->task_clock_group, arg);
+          }
+	  return 0;
+	case PERF_EVENT_IOC_TASK_CLOCK_WAIT:
+          if (event->attr.task_clock && task_clock_func.task_clock_entry_wait){
+            task_clock_func.task_clock_entry_wait(event->task_clock_group);
+          }
           return 0;
 	case PERF_EVENT_IOC_REFRESH:
 		return perf_event_refresh(event, arg);
@@ -2649,6 +2662,23 @@ static long perf_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		perf_event_for_each(event, func);
 	else
 		perf_event_for_each_child(event, func);
+
+
+	//TASK CLOCK: if this was a disable, we have to update our clock to 
+	//reflect the instructions that were counted but never triggered an overflow.
+	//We have to do it here because it doesn't happen until after the disable
+	//is complete
+	if (cmd == PERF_EVENT_IOC_DISABLE && event->attr.task_clock){
+		//lets just treat it like an overflow
+		//if (task_clock_func.task_clock_overflow_handler){
+                  //task_clock_func.task_clock_overflow_handler(event->task_clock_group);
+                //}
+                if (task_clock_func.task_clock_on_disable){
+                  task_clock_func.task_clock_on_disable(event->task_clock_group);
+                }
+	}
+
+
 
 	return 0;
 }
@@ -3735,7 +3765,7 @@ static void perf_event_output(struct perf_event *event, int nmi,
 	perf_output_end(&handle);
 
 	//TASK_CLOCK call
-	if (task_clock_func.task_clock_overflow_handler){
+	if (event->attr.task_clock && task_clock_func.task_clock_overflow_handler){
 	  task_clock_func.task_clock_overflow_handler(event->task_clock_group);
 	}
 
@@ -5614,36 +5644,29 @@ SYSCALL_DEFINE5(perf_event_open,
 	int fput_needed = 0;
 	int err;
 	
-	printk(KERN_EMERG "peo: 1\n");
 	/* for future expandability... */
 	if (flags & ~(PERF_FLAG_FD_NO_GROUP | PERF_FLAG_FD_OUTPUT))
 		return -EINVAL;
-	printk(KERN_EMERG "peo: 2\n");
 	err = perf_copy_attr(attr_uptr, &attr);
 	if (err)
 		return err;
-	printk(KERN_EMERG "peo: 3\n");
 	if (!attr.exclude_kernel) {
 		if (perf_paranoid_kernel() && !capable(CAP_SYS_ADMIN))
 			return -EACCES;
 	}
-	printk(KERN_EMERG "peo: 4\n");
 	if (attr.freq) {
 		if (attr.sample_freq > sysctl_perf_event_sample_rate)
 			return -EINVAL;
 	}
-	printk(KERN_EMERG "peo: 5\n");
 	event_fd = get_unused_fd_flags(O_RDWR);
 	if (event_fd < 0)
 		return event_fd;
-	printk(KERN_EMERG "peo: 6\n");
 	//get the group leader for this task_clock
 	if (attr.task_clock && group_fd != -1){
 	  task_clock_leader = perf_fget_light(group_fd, &fput_needed);
 	  fput_needed=0;
 	  group_fd=-1;
 	}
-	printk(KERN_EMERG "peo: 7\n");
 	if (group_fd != -1) {
 		group_leader = perf_fget_light(group_fd, &fput_needed);
 		if (IS_ERR(group_leader)) {
@@ -5656,7 +5679,6 @@ SYSCALL_DEFINE5(perf_event_open,
 		if (flags & PERF_FLAG_FD_NO_GROUP)
 			group_leader = NULL;
 	}
-	printk(KERN_EMERG "peo: 8\n");
 	if (pid != -1) {
 		task = find_lively_task_by_vpid(pid);
 		if (IS_ERR(task)) {
@@ -5670,7 +5692,6 @@ SYSCALL_DEFINE5(perf_event_open,
 		err = PTR_ERR(event);
 		goto err_task;
 	}
-	printk(KERN_EMERG "peo: 9\n");
 
 
 	/* setup the task_clock stuff */
@@ -5690,7 +5711,6 @@ SYSCALL_DEFINE5(perf_event_open,
 	    task_clock_func.task_clock_entry_init(event->task_clock_group, event);
 	  }
 	}
-	printk(KERN_EMERG "peo: 10\n");
 	/*
 	 * Special case software events and allow them to be part of
 	 * any hardware group.
@@ -5720,7 +5740,6 @@ SYSCALL_DEFINE5(perf_event_open,
 		}
 	}
 
-	printk(KERN_EMERG "peo:11\n");
 	/*
 	 * Get the target context (task or percpu):
 	 */
@@ -5761,8 +5780,6 @@ SYSCALL_DEFINE5(perf_event_open,
 			goto err_context;
 	}
 
-	printk(KERN_EMERG "peo: 12\n");
-
 	if (output_event) {
 		err = perf_event_set_output(event, output_event);
 		if (err)
@@ -5774,8 +5791,6 @@ SYSCALL_DEFINE5(perf_event_open,
 		err = PTR_ERR(event_file);
 		goto err_context;
 	}
-
-	printk(KERN_EMERG "peo: 13\n");
 
 	if (move_group) {
 		struct perf_event_context *gctx = group_leader->ctx;
@@ -5823,7 +5838,6 @@ SYSCALL_DEFINE5(perf_event_open,
 	 */
 	fput_light(group_file, fput_needed);
 	fd_install(event_fd, event_file);
-	printk(KERN_EMERG "peo: DONE\n");
 	return event_fd;
 
 err_context:

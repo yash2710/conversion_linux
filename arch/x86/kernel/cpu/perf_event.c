@@ -1200,6 +1200,7 @@ static int x86_pmu_handle_irq(struct pt_regs *regs)
 
 		if (perf_event_overflow(event, 1, &data, regs))
 			x86_pmu_stop(event, 0);
+
 	}
 
 	if (handled)

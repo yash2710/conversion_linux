@@ -21,6 +21,7 @@ struct task_clock_info{
 
 struct task_clock_entry_info{
   uint8_t initialized;
+  uint8_t sleeping;
   uint8_t waiting;
   uint8_t inactive;
  //when the counter is stopped, the count gets reset to 0...but we need
@@ -35,9 +36,12 @@ struct task_clock_group_info{
   spinlock_t nmi_lock;
   spinlock_t lock;
   int32_t lowest_tid;
+  uint64_t lowest_ticks;
   struct task_clock_entry_info clocks[TASK_CLOCK_MAX_THREADS];
   struct irq_work pending_work;
-  int pending;
+  uint8_t notification_needed;
+  uint8_t nmi_new_low;
+  struct task_clock_user_status * user_status_arr;
 };
 
 
@@ -46,9 +50,13 @@ struct task_clock_func{
   struct task_clock_group_info * (*task_clock_group_init) (void);
   void (*task_clock_entry_init) (struct task_clock_group_info *, struct perf_event *);
   void (*task_clock_on_disable) (struct task_clock_group_info *);
+  void (*task_clock_on_enable) (struct task_clock_group_info *);
   void (*task_clock_entry_activate) (struct task_clock_group_info *);
   void (*task_clock_entry_halt) (struct task_clock_group_info *);
   void (*task_clock_on_wait) (struct task_clock_group_info *);
+  void (*task_clock_entry_activate_other) (struct task_clock_group_info *, int32_t id);
+  void (*task_clock_entry_wait) (struct task_clock_group_info *);
+  void (*task_clock_entry_sleep) (struct task_clock_group_info *);
 };
 
 #define TASK_CLOCK_MAX_THREADS 1024
