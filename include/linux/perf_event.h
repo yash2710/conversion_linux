@@ -246,6 +246,7 @@ struct perf_event_attr {
 #define PERF_EVENT_IOC_TASK_CLOCK_ACTIVATE_OTHER _IO ('$', 9)
 #define PERF_EVENT_IOC_TASK_CLOCK_WAIT _IO ('$', 10)
 #define PERF_EVENT_IOC_TASK_CLOCK_SLEEP _IO ('$', 11)
+#define PERF_EVENT_IOC_TASK_CLOCK_ADD_TICKS _IO ('$', 12)
 
 enum perf_event_ioc_flags {
 	PERF_IOC_FLAG_GROUP		= 1U << 0,
@@ -977,6 +978,8 @@ extern void perf_prepare_sample(struct perf_event_header *header,
 				struct perf_sample_data *data,
 				struct perf_event *event,
 				struct pt_regs *regs);
+
+extern void perf_event_overflow_update_period(struct perf_event *event);
 
 extern int perf_event_overflow(struct perf_event *event, int nmi,
 				 struct perf_sample_data *data,

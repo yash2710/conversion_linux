@@ -674,6 +674,7 @@ static void intel_pmu_enable_event(struct perf_event *event)
 static int intel_pmu_save_and_restart(struct perf_event *event)
 {
 	x86_perf_event_update(event);
+	perf_event_overflow_update_period(event);
 	return x86_perf_event_set_period(event);
 }
 

@@ -9,8 +9,8 @@
 
 //used by userspace to know what is going on
 struct task_clock_user_status{
-  uint64_t lowest_clock; //set when you inactivate the clock
-  uint64_t ticks;
+	uint64_t lowest_clock; //set when you inactivate the clock
+	uint64_t ticks;
 };__attribute__ ((aligned (8), packed));
 
 struct task_clock_info{
@@ -30,6 +30,11 @@ struct task_clock_entry_info{
   uint64_t ticks;
   uint64_t base_ticks;
   struct perf_event * event;
+  //debugging stuff
+  struct timespec debug_last_enable;
+  struct timespec debug_last_disable;
+  uint64_t debug_last_enable_ticks;
+  uint64_t debug_last_sample_period;
 };
 
 struct task_clock_group_info{
@@ -57,6 +62,8 @@ struct task_clock_func{
   void (*task_clock_entry_activate_other) (struct task_clock_group_info *, int32_t id);
   void (*task_clock_entry_wait) (struct task_clock_group_info *);
   void (*task_clock_entry_sleep) (struct task_clock_group_info *);
+  void (*task_clock_overflow_update_period) (struct task_clock_group_info *);
+  void (*task_clock_add_ticks) (struct task_clock_group_info *, int32_t ticks);
 };
 
 #define TASK_CLOCK_MAX_THREADS 1024

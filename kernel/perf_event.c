@@ -2626,6 +2626,11 @@ static long perf_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
             task_clock_func.task_clock_entry_wait(event->task_clock_group);
           }
           return 0;
+	case PERF_EVENT_IOC_TASK_CLOCK_ADD_TICKS:
+	  if (event->attr.task_clock && task_clock_func.task_clock_add_ticks){
+            task_clock_func.task_clock_add_ticks(event->task_clock_group, arg);
+          }
+          return 0;
 	case PERF_EVENT_IOC_REFRESH:
 		return perf_event_refresh(event, arg);
 
@@ -4366,6 +4371,12 @@ static int __perf_event_overflow(struct perf_event *event, int nmi,
 		perf_event_output(event, nmi, data, regs);
 
 	return ret;
+}
+
+void perf_event_overflow_update_period(struct perf_event *event){
+	if (event->attr.task_clock && task_clock_func.task_clock_overflow_update_period){
+		task_clock_func.task_clock_overflow_update_period(event->task_clock_group);
+     	}
 }
 
 int perf_event_overflow(struct perf_event *event, int nmi,
