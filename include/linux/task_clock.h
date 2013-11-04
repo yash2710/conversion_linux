@@ -11,6 +11,10 @@
 struct task_clock_user_status{
 	uint64_t lowest_clock; //set when you inactivate the clock
 	uint64_t ticks;
+	uint64_t notifying_clock;
+	uint64_t notifying_id;
+	uint64_t notifying_sample;
+	uint64_t notifying_diff;
 };__attribute__ ((aligned (8), packed));
 
 struct task_clock_info{
@@ -35,6 +39,7 @@ struct task_clock_entry_info{
   struct timespec debug_last_disable;
   uint64_t debug_last_enable_ticks;
   uint64_t debug_last_sample_period;
+  uint64_t debug_last_overflow_ticks;
 };
 
 struct task_clock_group_info{

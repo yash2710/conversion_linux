@@ -248,6 +248,8 @@ struct perf_event_attr {
 #define PERF_EVENT_IOC_TASK_CLOCK_SLEEP _IO ('$', 11)
 #define PERF_EVENT_IOC_TASK_CLOCK_ADD_TICKS _IO ('$', 12)
 
+extern int tim_perf_debug_counter;
+
 enum perf_event_ioc_flags {
 	PERF_IOC_FLAG_GROUP		= 1U << 0,
 };
