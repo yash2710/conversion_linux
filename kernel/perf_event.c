@@ -2606,6 +2606,11 @@ static long perf_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
             task_clock_func.task_clock_entry_sleep(event->task_clock_group);
           }
 	  return 0;
+	case PERF_EVENT_IOC_TASK_CLOCK_WOKE_UP:
+	  if (event->attr.task_clock && task_clock_func.task_clock_entry_woke_up){
+            task_clock_func.task_clock_entry_woke_up(event->task_clock_group);
+          }
+	  return 0;
 	case PERF_EVENT_IOC_TASK_CLOCK_HALT:
 	  if (event->attr.task_clock && task_clock_func.task_clock_entry_halt){
 	    task_clock_func.task_clock_entry_halt(event->task_clock_group);

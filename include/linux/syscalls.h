@@ -837,4 +837,6 @@ asmlinkage long sys_conversion_sync(unsigned long start, int flags);
 
 asmlinkage long sys_task_clock_open(int fd, unsigned long tick_arr, int tid);
 
+asmlinkage long sys_conversion_determ_init(unsigned long addr, unsigned long token_addr);
+
 #endif

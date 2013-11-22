@@ -67,6 +67,7 @@ struct task_clock_func{
   void (*task_clock_entry_activate_other) (struct task_clock_group_info *, int32_t id);
   void (*task_clock_entry_wait) (struct task_clock_group_info *);
   void (*task_clock_entry_sleep) (struct task_clock_group_info *);
+  void (*task_clock_entry_woke_up) (struct task_clock_group_info *);
   void (*task_clock_overflow_update_period) (struct task_clock_group_info *);
   void (*task_clock_add_ticks) (struct task_clock_group_info *, int32_t ticks);
 };

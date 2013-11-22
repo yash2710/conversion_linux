@@ -342,3 +342,4 @@ ENTRY(sys_call_table)
 	.long sys_prlimit64		/* 340 */
 	.long sys_conversion_sync       /* 341 */
 	.long sys_task_clock_open       /* 342 */
+	.long sys_conversion_determ_init /* 343 */

@@ -247,6 +247,7 @@ struct perf_event_attr {
 #define PERF_EVENT_IOC_TASK_CLOCK_WAIT _IO ('$', 10)
 #define PERF_EVENT_IOC_TASK_CLOCK_SLEEP _IO ('$', 11)
 #define PERF_EVENT_IOC_TASK_CLOCK_ADD_TICKS _IO ('$', 12)
+#define PERF_EVENT_IOC_TASK_CLOCK_WOKE_UP _IO ('$', 13)
 
 extern int tim_perf_debug_counter;
 

@@ -1317,6 +1317,7 @@ struct mmap_snapshot{
   void (*stats_dec_pages_allocated) (void);
   void (*ksnap_crash_handler)(int, struct page *);
   int snap_sequence_number;
+  unsigned long (*conversion_determ_init) (struct vm_area_struct *, unsigned long);
 };
 
 extern struct mmap_snapshot mmap_snapshot_instance;
