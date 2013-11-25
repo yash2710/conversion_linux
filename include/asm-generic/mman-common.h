@@ -31,7 +31,7 @@
 #define MS_KSNAP_GET    8
 #define MS_KSNAP_MAKE   16
 #define MS_KSNAP_GET_MERGE 32
-#define MS_KSNAP_DETERM_LAZY 64
+#define MS_KSNAP_PARTIAL 64
 #define MS_CONVERSION_DETERM_TOKEN_RELEASE 128
 
 #define MADV_NORMAL	0		/* no further special treatment */
