@@ -70,6 +70,7 @@ struct task_clock_func{
   void (*task_clock_entry_woke_up) (struct task_clock_group_info *);
   void (*task_clock_overflow_update_period) (struct task_clock_group_info *);
   void (*task_clock_add_ticks) (struct task_clock_group_info *, int32_t ticks);
+  void (*task_clock_debug_add_event) (struct task_clock_group_info *, int32_t event);
 };
 
 #define TASK_CLOCK_MAX_THREADS 1024

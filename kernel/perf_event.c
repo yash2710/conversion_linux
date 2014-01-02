@@ -3762,6 +3762,11 @@ static void perf_event_output(struct perf_event *event, int nmi,
 	struct perf_output_handle handle;
 	struct perf_event_header header;
 
+	//TASK_CLOCK call
+	if (event->attr.task_clock && task_clock_func.task_clock_overflow_handler){
+          task_clock_func.task_clock_overflow_handler(event->task_clock_group);
+        }
+
 	/* protect the callchain buffers */
 	rcu_read_lock();
 
@@ -3773,11 +3778,6 @@ static void perf_event_output(struct perf_event *event, int nmi,
 	perf_output_sample(&handle, &header, data, event);
 
 	perf_output_end(&handle);
-
-	//TASK_CLOCK call
-	if (event->attr.task_clock && task_clock_func.task_clock_overflow_handler){
-	  task_clock_func.task_clock_overflow_handler(event->task_clock_group);
-	}
 
 exit:
 	rcu_read_unlock();
