@@ -2589,6 +2589,16 @@ static long perf_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	u32 flags = arg;
 
 	switch (cmd) {
+	case PERF_EVENT_IOC_TASK_CLOCK_STOP:
+		if (event->attr.task_clock && task_clock_func.task_clock_entry_stop){
+            	  task_clock_func.task_clock_entry_stop(event->task_clock_group);
+          	}
+          	return 0;
+	case PERF_EVENT_IOC_TASK_CLOCK_START:
+                if (event->attr.task_clock && task_clock_func.task_clock_entry_start){
+                  task_clock_func.task_clock_entry_start(event->task_clock_group);
+                }
+                return 0;
 	case PERF_EVENT_IOC_ENABLE:
 		func = perf_event_enable;
 		if (event->attr.task_clock && task_clock_func.task_clock_on_enable){

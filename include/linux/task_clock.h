@@ -7,6 +7,9 @@
 
 #define TASK_CLOCK_MAX_THREADS 1024
 
+//gets defined later
+struct listarray;
+
 //used by userspace to know what is going on
 struct task_clock_user_status{
 	uint64_t lowest_clock; //set when you inactivate the clock
@@ -15,6 +18,7 @@ struct task_clock_user_status{
 	uint64_t notifying_id;
 	uint64_t notifying_sample;
 	uint64_t notifying_diff;
+	uint8_t single_active_thread; //set to 1 when there is only one thread active
 };__attribute__ ((aligned (8), packed));
 
 struct task_clock_info{
@@ -28,6 +32,7 @@ struct task_clock_entry_info{
   uint8_t sleeping;
   uint8_t waiting;
   uint8_t inactive;
+  uint8_t count_ticks;
  //when the counter is stopped, the count gets reset to 0...but we need
   //that to persist. So, "ticks" is the current counter value and base_ticks
   //stores the values in previous counter sessions
@@ -52,6 +57,7 @@ struct task_clock_group_info{
   uint8_t notification_needed;
   uint8_t nmi_new_low;
   struct task_clock_user_status * user_status_arr;
+  struct listarray * active_threads;
 };
 
 
@@ -71,6 +77,8 @@ struct task_clock_func{
   void (*task_clock_overflow_update_period) (struct task_clock_group_info *);
   void (*task_clock_add_ticks) (struct task_clock_group_info *, int32_t ticks);
   void (*task_clock_debug_add_event) (struct task_clock_group_info *, int32_t event);
+  void (*task_clock_entry_stop) (struct task_clock_group_info *);
+  void (*task_clock_entry_start) (struct task_clock_group_info *);
 };
 
 #define TASK_CLOCK_MAX_THREADS 1024

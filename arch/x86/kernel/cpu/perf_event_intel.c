@@ -959,6 +959,7 @@ static __init int intel_pmu_init(void)
 	x86_pmu.version			= version;
 	x86_pmu.num_counters		= eax.split.num_counters;
 	x86_pmu.cntval_bits		= eax.split.bit_width;
+	printk(KERN_EMERG " cnt val bits???? %d version %d\n", x86_pmu.cntval_bits, version);
 	x86_pmu.cntval_mask		= (1ULL << eax.split.bit_width) - 1;
 
 	/*

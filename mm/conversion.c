@@ -22,7 +22,7 @@ SYSCALL_DEFINE2(conversion_determ_init, unsigned long, address, unsigned long, t
   }
 }
 
-SYSCALL_DEFINE2(conversion_sync, unsigned long, address, int, flags)
+SYSCALL_DEFINE3(conversion_sync, unsigned long, address, int, flags, size_t, editing_distance)
 {
   struct vm_area_struct *vma;
 
@@ -32,6 +32,6 @@ SYSCALL_DEFINE2(conversion_sync, unsigned long, address, int, flags)
             mmap_snapshot_instance.snapshot_msync &&
       ((flags &  MS_KSNAP_GET) || (flags & MS_KSNAP_MAKE) ||
        (flags & MS_KSNAP_GET_MERGE))){    //TODO: for commit, need to relax these constraints
-    mmap_snapshot_instance.snapshot_msync(vma, flags);                    //TODO: this function name in the struct should change      
+    mmap_snapshot_instance.snapshot_msync(vma, flags, editing_distance);                    //TODO: this function name in the struct should change      
   }
 }

@@ -1307,7 +1307,7 @@ struct mmap_snapshot{
   int (*ksnap_tracking_on) (struct vm_area_struct *);
   int (*ksnap_tracking_off) (struct vm_area_struct *);
   void (*ksnap_userdata_copy) (struct vm_area_struct *, struct vm_area_struct *); 
-  void (*snapshot_msync) (struct vm_area_struct *, unsigned long);
+  void (*snapshot_msync) (struct vm_area_struct *, unsigned long, size_t);
   int (*remove_snapshot) (struct vm_area_struct *);
   int (*init_snapshot) (struct vm_area_struct *);
   int (*remove_subscriber) (struct vm_area_struct *);
