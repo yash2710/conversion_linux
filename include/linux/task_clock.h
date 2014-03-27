@@ -19,6 +19,7 @@ struct task_clock_user_status{
 	uint64_t notifying_sample;
 	uint64_t notifying_diff;
 	uint8_t single_active_thread; //set to 1 when there is only one thread active
+	uint8_t activated_lowest;
 };__attribute__ ((aligned (8), packed));
 
 struct task_clock_info{
@@ -69,8 +70,8 @@ struct task_clock_func{
   void (*task_clock_on_enable) (struct task_clock_group_info *);
   void (*task_clock_entry_activate) (struct task_clock_group_info *);
   void (*task_clock_entry_halt) (struct task_clock_group_info *);
-  void (*task_clock_on_wait) (struct task_clock_group_info *);
   void (*task_clock_entry_activate_other) (struct task_clock_group_info *, int32_t id);
+  void (*task_clock_entry_activate_and_set) (struct task_clock_group_info *, uint32_t clock_val);
   void (*task_clock_entry_wait) (struct task_clock_group_info *);
   void (*task_clock_entry_sleep) (struct task_clock_group_info *);
   void (*task_clock_entry_woke_up) (struct task_clock_group_info *);
@@ -79,6 +80,7 @@ struct task_clock_func{
   void (*task_clock_debug_add_event) (struct task_clock_group_info *, int32_t event);
   void (*task_clock_entry_stop) (struct task_clock_group_info *);
   void (*task_clock_entry_start) (struct task_clock_group_info *);
+  void (*task_clock_entry_reset) (struct task_clock_group_info *);
 };
 
 #define TASK_CLOCK_MAX_THREADS 1024

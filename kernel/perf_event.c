@@ -2471,8 +2471,6 @@ static unsigned int perf_poll(struct file *file, poll_table *wait)
 
 	if (event->attr.task_clock){
 	  poll_wait(file, &event->task_clock_waitq, wait);
-	  if (task_clock_func.task_clock_on_wait)
-	    task_clock_func.task_clock_on_wait(event->task_clock_group);
 	}
 	else{
 	  poll_wait(file, &event->waitq, wait);
@@ -2589,6 +2587,11 @@ static long perf_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	u32 flags = arg;
 
 	switch (cmd) {
+	case PERF_EVENT_IOC_TASK_CLOCK_RESET:
+                if (event->attr.task_clock && task_clock_func.task_clock_entry_reset){
+                  task_clock_func.task_clock_entry_reset(event->task_clock_group);
+                }
+                return 0;
 	case PERF_EVENT_IOC_TASK_CLOCK_STOP:
 		if (event->attr.task_clock && task_clock_func.task_clock_entry_stop){
             	  task_clock_func.task_clock_entry_stop(event->task_clock_group);
