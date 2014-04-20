@@ -865,6 +865,7 @@ static void intel_pmu_cpu_starting(int cpu)
 	 * Deal with CPUs that don't clear their LBRs on power-up.
 	 */
 	intel_pmu_lbr_reset();
+	set_in_cr4(X86_CR4_PCE);
 }
 
 static void intel_pmu_cpu_dying(int cpu)
