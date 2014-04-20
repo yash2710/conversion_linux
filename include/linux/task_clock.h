@@ -14,18 +14,22 @@ struct listarray;
 struct task_clock_user_status{
 	uint64_t lowest_clock; //set when you inactivate the clock
 	uint64_t ticks;
-	uint64_t notifying_clock;
-	uint64_t notifying_id;
-	uint64_t notifying_sample;
-	uint64_t notifying_diff;
+	u_int64_t notifying_clock;
+       u_int64_t notifying_id;
+       u_int64_t notifying_sample;
+       u_int64_t notifying_diff;
 	uint8_t single_active_thread; //set to 1 when there is only one thread active
 	uint8_t activated_lowest;
+	uint8_t scaling_whole, scaling_fraction;
+	uint32_t hwc_idx; //index of the hw perf counter
+	uint64_t period_sets;
 };__attribute__ ((aligned (8), packed));
 
 struct task_clock_info{
   uint32_t tid;
   struct task_clock_user_status * user_status;
   int fd;
+  struct task_clock_group_info * group_info;
 };
 
 struct task_clock_entry_info{
@@ -43,9 +47,11 @@ struct task_clock_entry_info{
   //debugging stuff
   struct timespec debug_last_enable;
   struct timespec debug_last_disable;
+  struct timespec tx_start, tx_last_read;
   uint64_t debug_last_enable_ticks;
   uint64_t debug_last_sample_period;
   uint64_t debug_last_overflow_ticks;
+  uint8_t userspace_reading;
 };
 
 struct task_clock_group_info{
@@ -80,10 +86,16 @@ struct task_clock_func{
   void (*task_clock_debug_add_event) (struct task_clock_group_info *, int32_t event);
   void (*task_clock_entry_stop) (struct task_clock_group_info *);
   void (*task_clock_entry_start) (struct task_clock_group_info *);
+  void (*task_clock_entry_stop_no_notify) (struct task_clock_group_info *);
+  void (*task_clock_entry_start_no_notify) (struct task_clock_group_info *);
   void (*task_clock_entry_reset) (struct task_clock_group_info *);
 };
 
 #define TASK_CLOCK_MAX_THREADS 1024
+#define TASK_CLOCK_OP_STOP 1
+#define TASK_CLOCK_OP_START 2
+#define TASK_CLOCK_OP_START_COARSENED 3
+
 
 extern struct task_clock_func task_clock_func;
 

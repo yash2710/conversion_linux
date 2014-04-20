@@ -2587,6 +2587,16 @@ static long perf_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	u32 flags = arg;
 
 	switch (cmd) {
+	case PERF_EVENT_IOC_TASK_CLOCK_STOP_NO_NOTIFY:
+		if (event->attr.task_clock && task_clock_func.task_clock_entry_stop_no_notify){
+                  task_clock_func.task_clock_entry_stop_no_notify(event->task_clock_group);
+                }
+		return 0;
+	case PERF_EVENT_IOC_TASK_CLOCK_START_NO_NOTIFY:
+                if (event->attr.task_clock && task_clock_func.task_clock_entry_start_no_notify){
+                  task_clock_func.task_clock_entry_start_no_notify(event->task_clock_group);
+                }
+                return 0;
 	case PERF_EVENT_IOC_TASK_CLOCK_RESET:
                 if (event->attr.task_clock && task_clock_func.task_clock_entry_reset){
                   task_clock_func.task_clock_entry_reset(event->task_clock_group);
@@ -2701,6 +2711,10 @@ static long perf_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
                 }
 	}
 
+	if (cmd == PERF_EVENT_IOC_ENABLE && event->attr.task_clock){
+		//set the hardware idx
+		current->task_clock.user_status->hwc_idx=event->hw.idx;
+	}
 
 
 	return 0;

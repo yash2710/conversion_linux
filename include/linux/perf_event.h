@@ -251,6 +251,8 @@ struct perf_event_attr {
 #define PERF_EVENT_IOC_TASK_CLOCK_STOP _IO ('$', 14)
 #define PERF_EVENT_IOC_TASK_CLOCK_START _IO ('$', 15)
 #define PERF_EVENT_IOC_TASK_CLOCK_RESET _IO ('$', 16)
+#define PERF_EVENT_IOC_TASK_CLOCK_STOP_NO_NOTIFY _IO ('$', 17)
+#define PERF_EVENT_IOC_TASK_CLOCK_START_NO_NOTIFY _IO ('$', 18)
 
 extern int tim_perf_debug_counter;
 
@@ -824,6 +826,8 @@ struct perf_event {
 	u64				id;
 
 	perf_overflow_handler_t		overflow_handler;
+
+	u64 				last_written;
 
 #ifdef CONFIG_EVENT_TRACING
 	struct ftrace_event_call	*tp_event;
