@@ -349,6 +349,7 @@
 #define __NR_conversion_sync    341
 #define __NR_task_clock_open    342
 #define __NR_conversion_determ_init 343
+#define __NR_task_clock_do
 
 #ifdef __KERNEL__
 

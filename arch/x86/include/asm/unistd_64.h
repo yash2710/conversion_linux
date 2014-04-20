@@ -675,6 +675,8 @@ __SYSCALL(__NR_conversion_sync, sys_conversion_sync)
 __SYSCALL(__NR_task_clock_open, sys_task_clock_open)
 #define __NR_conversion_determ_init                    305
 __SYSCALL(__NR_conversion_determ_init, sys_conversion_determ_init)
+#define __NR_task_clock_do                    306
+__SYSCALL(__NR_task_clock_do, sys_task_clock_do)
 
 #ifndef __NO_STUBS
 #define __ARCH_WANT_OLD_READDIR
