@@ -29,9 +29,7 @@ SYSCALL_DEFINE3(conversion_sync, unsigned long, address, int, flags, size_t, edi
   vma = find_vma(current->mm, address);
   if (vma && mmap_snapshot_instance.is_snapshot &&
       mmap_snapshot_instance.is_snapshot(vma, NULL, NULL) &&
-            mmap_snapshot_instance.snapshot_msync &&
-      ((flags &  MS_KSNAP_GET) || (flags & MS_KSNAP_MAKE) ||
-       (flags & MS_KSNAP_GET_MERGE))){    //TODO: for commit, need to relax these constraints
+            mmap_snapshot_instance.snapshot_msync){    //TODO: for commit, need to relax these constraints
     mmap_snapshot_instance.snapshot_msync(vma, flags, editing_distance);                    //TODO: this function name in the struct should change      
   }
 }
