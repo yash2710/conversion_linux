@@ -1319,6 +1319,8 @@ struct mmap_snapshot{
   int snap_sequence_number;
   unsigned long (*conversion_determ_init) (struct vm_area_struct *, unsigned long);
   void (*conversion_thread_status) (struct vm_area_struct *, unsigned long);
+  void (*circ_buffer_add) (struct vm_area_struct *, uint64_t);
+  struct page * (*cv_page_alloc) (struct vma_area_struct * vma);
 };
 
 extern struct mmap_snapshot mmap_snapshot_instance;
