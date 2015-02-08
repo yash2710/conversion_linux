@@ -23,6 +23,7 @@ struct task_clock_user_status{
 	uint8_t scaling_whole, scaling_fraction;
 	uint32_t hwc_idx; //index of the hw perf counter
 	uint64_t period_sets;
+	uint8_t hit_bounded_fence;
 };__attribute__ ((aligned (8), packed));
 
 struct task_clock_info{
@@ -43,6 +44,8 @@ struct task_clock_entry_info{
   //stores the values in previous counter sessions
   uint64_t ticks;
   uint64_t base_ticks;
+  //length of the current chunk
+  uint64_t chunk_ticks;
   struct perf_event * event;
   //debugging stuff
   struct timespec debug_last_enable;
@@ -69,7 +72,7 @@ struct task_clock_group_info{
 
 
 struct task_clock_func{
-  void (*task_clock_overflow_handler) (struct task_clock_group_info *);
+  void (*task_clock_overflow_handler) (struct task_clock_group_info *, struct pt_regs * regs);
   struct task_clock_group_info * (*task_clock_group_init) (void);
   void (*task_clock_entry_init) (struct task_clock_group_info *, struct perf_event *);
   void (*task_clock_on_disable) (struct task_clock_group_info *);
@@ -89,6 +92,7 @@ struct task_clock_func{
   void (*task_clock_entry_stop_no_notify) (struct task_clock_group_info *);
   void (*task_clock_entry_start_no_notify) (struct task_clock_group_info *);
   void (*task_clock_entry_reset) (struct task_clock_group_info *);
+  int (*task_clock_entry_is_singlestep) (struct task_clock_group_info *, struct pt_regs * regs);
 };
 
 #define TASK_CLOCK_MAX_THREADS 1024

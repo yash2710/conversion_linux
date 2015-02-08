@@ -3791,7 +3791,7 @@ static void perf_event_output(struct perf_event *event, int nmi,
 
 	//TASK_CLOCK call
 	if (event->attr.task_clock && task_clock_func.task_clock_overflow_handler){
-          task_clock_func.task_clock_overflow_handler(event->task_clock_group);
+          task_clock_func.task_clock_overflow_handler(event->task_clock_group, regs);
         }
 
 	/* protect the callchain buffers */
