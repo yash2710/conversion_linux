@@ -1321,6 +1321,8 @@ struct mmap_snapshot{
   void (*conversion_thread_status) (struct vm_area_struct *, unsigned long);
   void (*circ_buffer_add) (struct vm_area_struct *, uint64_t);
   struct page * (*cv_page_alloc) (struct vma_area_struct * vma);
+  void (*conv_cow_user_page) (struct page * new_page, struct page * old_page,
+				unsigned long address, struct vma_area_struct * vma, struct mm_struct *);
 };
 
 extern struct mmap_snapshot mmap_snapshot_instance;
