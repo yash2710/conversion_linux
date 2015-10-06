@@ -24,6 +24,7 @@ struct task_clock_user_status{
 	uint32_t hwc_idx; //index of the hw perf counter
 	uint64_t period_sets;
 	uint8_t hit_bounded_fence;
+	uint64_t ticks_to_add;
 };__attribute__ ((aligned (8), packed));
 
 struct task_clock_info{
