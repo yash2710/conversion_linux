@@ -48,13 +48,15 @@ struct task_clock_entry_info{
   //length of the current chunk
   uint64_t chunk_ticks;
   struct perf_event * event;
+  //sync clocks
+  uint64_t local_sync_barrier_clock;
   //debugging stuff
-  struct timespec debug_last_enable;
-  struct timespec debug_last_disable;
-  struct timespec tx_start, tx_last_read;
-  uint64_t debug_last_enable_ticks;
-  uint64_t debug_last_sample_period;
-  uint64_t debug_last_overflow_ticks;
+  //struct timespec debug_last_enable;
+  //struct timespec debug_last_disable;
+  //struct timespec tx_start, tx_last_read;
+  //uint64_t debug_last_enable_ticks;
+  //uint64_t debug_last_sample_period;
+  //uint64_t debug_last_overflow_ticks;
   uint8_t userspace_reading;
 };
 
@@ -69,6 +71,7 @@ struct task_clock_group_info{
   uint8_t nmi_new_low;
   struct task_clock_user_status * user_status_arr;
   struct listarray * active_threads;
+  uint64_t global_sync_barrier_clock;
 };
 
 
@@ -94,6 +97,7 @@ struct task_clock_func{
   void (*task_clock_entry_start_no_notify) (struct task_clock_group_info *);
   void (*task_clock_entry_reset) (struct task_clock_group_info *);
   int (*task_clock_entry_is_singlestep) (struct task_clock_group_info *, struct pt_regs * regs);
+  void (*task_clock_entry_read_clock) (struct task_clock_group_info *);
 };
 
 #define TASK_CLOCK_MAX_THREADS 1024
