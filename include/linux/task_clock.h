@@ -50,14 +50,8 @@ struct task_clock_entry_info{
   struct perf_event * event;
   //sync clocks
   uint64_t local_sync_barrier_clock;
-  //debugging stuff
-  //struct timespec debug_last_enable;
-  //struct timespec debug_last_disable;
-  //struct timespec tx_start, tx_last_read;
-  //uint64_t debug_last_enable_ticks;
-  //uint64_t debug_last_sample_period;
-  //uint64_t debug_last_overflow_ticks;
   uint8_t userspace_reading;
+  int64_t overflow_budget;
 };
 
 struct task_clock_group_info{
@@ -72,6 +66,7 @@ struct task_clock_group_info{
   struct task_clock_user_status * user_status_arr;
   struct listarray * active_threads;
   uint64_t global_sync_barrier_clock;
+  uint64_t wakeup_target; //used to make sure only one thread targets a waiter
 };
 
 
